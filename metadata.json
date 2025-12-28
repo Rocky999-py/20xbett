@@ -1,0 +1,7 @@
+{
+  "name": "20XBet - Next-Gen Automated Betting & MLM Ecosystem",
+  "description": "A high-performance MLM and sports betting platform on BNB Smart Chain with 5-generation automatic distribution and real-time live odds.",
+  "requestFramePermissions": [
+    "camera"
+  ]
+}
