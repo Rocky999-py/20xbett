@@ -1,14 +1,17 @@
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
-import { CASINO_CATEGORIES } from '../constants';
-import { Game, User } from '../types';
+import React, { useState, useEffect, useRef } from 'react';
+import { CASINO_CATEGORIES } from '../constants.tsx';
+import { Game, User } from '../types.ts';
 
 const PLAYABLE_GAMES: Game[] = [
   { id: 'g1', name: 'Sweet Bonanza', provider: 'Pragmatic', category: 'Slots', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20sweetbonanza&lang=en&cur=USD&sysName=WEB&jurisdiction=99' },
-  { id: 'g3', name: 'Aviator', provider: 'Nexus', category: 'Crash Games', img: 'https://images.unsplash.com/photo-1506012733851-00f4e69b97b1?auto=format&fit=crop&q=80&w=400', demoUrl: 'INTERNAL_CRASH' },
-  { id: 'g4', name: 'Roulette Pro', provider: 'Nexus', category: 'Table Games', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=400', demoUrl: 'INTERNAL_ROULETTE' },
-  { id: 'g5', name: 'Sugar Rush', provider: 'Pragmatic', category: 'Slots', img: 'https://images.unsplash.com/photo-1533910534207-90f31029a78e?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20sugarrush&lang=en&cur=USD&sysName=WEB&jurisdiction=99' },
-  { id: 'g6', name: 'Live Dealers', provider: 'Evolution', category: 'Live Casino', img: 'https://images.unsplash.com/photo-1518893063132-36e46dbe2428?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://www.evolution.com/our-games/live-blackjack/' }
+  { id: 'g3', name: 'Aviator Pro', provider: 'Spribe', category: 'Crash Games', img: 'https://images.unsplash.com/photo-1506012733851-00f4e69b97b1?auto=format&fit=crop&q=80&w=400', demoUrl: 'INTERNAL_AVIATOR' },
+  { id: 'g4', name: 'Roulette Royale', provider: 'Evolution', category: 'Table Games', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=400', demoUrl: 'INTERNAL_ROULETTE' },
+  { id: 'g5', name: 'Gates of Olympus', provider: 'Pragmatic', category: 'Slots', img: 'https://images.unsplash.com/photo-1533910534207-90f31029a78e?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20olympus&lang=en&cur=USD&sysName=WEB&jurisdiction=99' },
+  { id: 'g6', name: 'Lightning Blackjack', provider: 'Evolution', category: 'Live Casino', img: 'https://images.unsplash.com/photo-1518893063132-36e46dbe2428?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://www.evolution.com/our-games/live-blackjack/' },
+  { id: 'g7', name: 'Big Bass Bonanza', provider: 'Pragmatic', category: 'Slots', img: 'https://images.unsplash.com/photo-1511512578047-dfb367046420?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs10bbbonanza&lang=en&cur=USD&sysName=WEB&jurisdiction=99' },
+  { id: 'g8', name: 'Dog House Megaways', provider: 'Pragmatic', category: 'Slots', img: 'https://images.unsplash.com/photo-1585336261022-680e295ce3fe?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vswaysdoghouse&lang=en&cur=USD&sysName=WEB&jurisdiction=99' },
+  { id: 'g9', name: 'Crazy Time', provider: 'Evolution', category: 'Live Casino', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=400', demoUrl: 'https://www.evolution.com/our-games/crazy-time/' }
 ];
 
 interface GameSimulatorProps {
@@ -56,8 +59,6 @@ const RouletteSimulator: React.FC<GameSimulatorProps> = ({ user, onBet }) => {
     }, 4000);
   };
 
-  const hasInsufficientLiquidity = user.balanceUSDT < selectedChip;
-
   return (
     <div className="flex flex-col h-full bg-[#020617] text-white overflow-y-auto no-scrollbar font-rajdhani">
       <div className="flex flex-col md:flex-row items-center justify-between p-6 bg-slate-950 border-b border-white/5 gap-4">
@@ -66,7 +67,7 @@ const RouletteSimulator: React.FC<GameSimulatorProps> = ({ user, onBet }) => {
             <span className="text-[10px] text-slate-500 font-black uppercase tracking-[0.3em]">Live Node Yield</span>
             <span className="text-2xl font-black text-amber-500 italic">${user.balanceUSDT.toLocaleString()}</span>
           </div>
-          <div className="flex space-x-2 overflow-x-auto no-scrollbar max-w-[200px] md:max-w-none">
+          <div className="flex space-x-2 overflow-x-auto no-scrollbar">
             {history.map((h, i) => (
               <div key={i} className={`w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-[10px] font-black border border-white/5 ${redNumbers.includes(h) ? 'bg-red-600/20 text-red-500 border-red-500/20' : h === 0 ? 'bg-green-600/20 text-green-500 border-green-500/20' : 'bg-slate-800/20 text-slate-400'}`}>{h}</div>
             ))}
@@ -97,14 +98,14 @@ const RouletteSimulator: React.FC<GameSimulatorProps> = ({ user, onBet }) => {
           
           <button 
             onClick={spin} 
-            disabled={spinning || Object.keys(bets).length === 0 || hasInsufficientLiquidity} 
+            disabled={spinning || Object.keys(bets).length === 0} 
             className={`col-span-6 h-20 rounded-2xl font-black text-xl uppercase tracking-[0.4em] shadow-2xl transition-all active:scale-95 border italic ${
-              spinning || Object.keys(bets).length === 0 || hasInsufficientLiquidity
+              spinning || Object.keys(bets).length === 0
               ? 'bg-slate-900 text-slate-700 border-slate-800 grayscale'
               : 'bg-gradient-to-r from-amber-600 to-amber-800 text-white border-amber-500/30'
             }`}
           >
-            {spinning ? 'PROCESSING...' : hasInsufficientLiquidity ? 'LIQUIDITY ERROR' : 'INITIALIZE SPIN'}
+            {spinning ? 'PROCESSING...' : 'INITIALIZE SPIN'}
           </button>
         </div>
       </div>
@@ -117,15 +118,30 @@ const AviatorSimulator: React.FC<GameSimulatorProps> = ({ user, onBet }) => {
   const [status, setStatus] = useState<'IDLE' | 'FLYING' | 'CRASHED'>('IDLE');
   const [betAmount, setBetAmount] = useState(10.0);
   const intervalRef = useRef<number | null>(null);
+  
+  // Visual position state
+  const [planePos, setPlanePos] = useState({ x: 0, y: 0 });
+  const [path, setPath] = useState<string>('M 0 100');
 
   const startRound = () => {
     if (status === 'FLYING' || user.balanceUSDT < betAmount) return;
     setStatus('FLYING');
     setMultiplier(1.0);
+    setPlanePos({ x: 0, y: 100 });
+    setPath('M 0 100');
+
     const crashAt = 1.1 + Math.random() * 5;
+    
     intervalRef.current = window.setInterval(() => {
       setMultiplier(m => {
         const next = m + 0.02 * (m * 0.5);
+        
+        // Update visual position
+        const progress = Math.min(100, (next - 1) * 30); // 0 to 100 over growth
+        const vertical = Math.min(80, Math.pow(progress / 10, 1.8)); // Curves up
+        setPlanePos({ x: progress, y: 100 - vertical });
+        setPath(prev => `${prev} L ${progress} ${100 - vertical}`);
+
         if (next >= crashAt) {
           clearInterval(intervalRef.current!);
           setStatus('CRASHED');
@@ -144,48 +160,87 @@ const AviatorSimulator: React.FC<GameSimulatorProps> = ({ user, onBet }) => {
     onBet(betAmount, true, multiplier);
   };
 
-  const hasInsufficientLiquidity = user.balanceUSDT < betAmount;
-
   return (
-    <div className="h-full flex flex-col bg-black text-white font-rajdhani overflow-hidden p-6 md:p-12 relative">
-      <div className="absolute top-10 left-10 z-10">
-         <span className="text-[10px] text-slate-600 font-black uppercase tracking-[0.5em] block mb-2">Network Yield</span>
+    <div className="h-full flex flex-col bg-[#050505] text-white font-rajdhani overflow-hidden relative">
+      <div className="absolute top-6 left-10 z-20 flex flex-col">
+         <span className="text-[10px] text-slate-600 font-black uppercase tracking-[0.5em] block mb-1">Network Yield</span>
          <span className="text-3xl font-black text-amber-500 italic">${user.balanceUSDT.toLocaleString()}</span>
       </div>
-      
-      <div className="flex-1 flex flex-col items-center justify-center text-center relative z-10">
-        <div className={`text-7xl md:text-[14rem] font-black transition-all duration-300 italic tracking-tighter ${status === 'CRASHED' ? 'text-red-600 animate-pulse scale-90' : 'text-white'}`}>
-          {multiplier.toFixed(2)}<span className="text-4xl md:text-6xl">x</span>
+
+      <div className="flex-1 relative flex items-center justify-center">
+        {/* Game Arena Background */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="cyber-grid w-full h-full"></div>
         </div>
-        {status === 'CRASHED' && <div className="text-red-500 font-black uppercase tracking-[0.5em] text-2xl mt-8 italic animate-bounce">SIGNAL LOST</div>}
+
+        {/* Flight Canvas Area */}
+        <div className="relative w-full max-w-4xl aspect-[2/1] bg-slate-900/10 rounded-3xl border border-white/5 overflow-hidden shadow-inner-deep mx-4">
+           {/* Growth Path SVG */}
+           <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+             <path d={path} fill="none" stroke="#ef4444" strokeWidth="0.5" strokeDasharray="1 1" className="opacity-40" />
+           </svg>
+
+           {/* The Plane/Helicopter Icon */}
+           <div 
+             className="absolute transition-all duration-100 ease-linear z-10"
+             style={{ 
+               left: `${planePos.x}%`, 
+               top: `${planePos.y}%`,
+               transform: `translate(-50%, -50%) ${status === 'CRASHED' ? 'scale(0) rotate(45deg)' : 'scale(1)'}` 
+             }}
+           >
+             <div className="relative">
+               <div className="text-4xl filter drop-shadow-[0_0_15px_#ef4444]">
+                 <i className={`fa-solid fa-plane-up text-red-500 transform ${status === 'FLYING' ? '-rotate-45' : ''}`}></i>
+               </div>
+               {status === 'FLYING' && (
+                 <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2">
+                    <div className="w-1 h-12 bg-gradient-to-t from-transparent to-red-500/50 animate-pulse"></div>
+                 </div>
+               )}
+             </div>
+           </div>
+
+           {/* Multiplier Display */}
+           <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+              <div className={`text-6xl md:text-9xl font-black italic tracking-tighter drop-shadow-2xl transition-all duration-300 ${status === 'CRASHED' ? 'text-red-600 scale-90' : 'text-white'}`}>
+                {multiplier.toFixed(2)}<span className="text-3xl md:text-5xl">x</span>
+              </div>
+              {status === 'CRASHED' && (
+                <div className="mt-4 px-8 py-2 bg-red-600/20 border border-red-500/40 rounded-full">
+                  <span className="text-red-500 font-black uppercase tracking-widest text-sm animate-pulse">Flew Away!</span>
+                </div>
+              )}
+           </div>
+        </div>
       </div>
       
-      <div className="bg-[#0a0a0b] p-8 md:p-12 rounded-[3.5rem] border border-white/5 flex flex-col md:flex-row gap-8 items-center shadow-inner-deep">
-        <div className="flex items-center space-x-6 bg-black p-5 rounded-3xl border border-white/10 w-full md:w-auto shadow-xl">
-          <button onClick={() => setBetAmount(b => Math.max(1, b - 10))} className="text-3xl font-black text-slate-600 hover:text-amber-500 transition-colors">➖</button>
-          <span className="text-3xl font-black w-32 text-center italic">${betAmount.toFixed(0)}</span>
-          <button onClick={() => setBetAmount(b => b + 10)} className="text-3xl font-black text-slate-600 hover:text-amber-500 transition-colors">➕</button>
+      {/* Betting Controls */}
+      <div className="p-6 md:p-10 bg-[#0a0a0b] border-t border-white/5 flex flex-col md:flex-row gap-6 items-center shadow-inner-deep shrink-0">
+        <div className="flex items-center space-x-6 bg-black p-4 rounded-2xl border border-white/10 w-full md:w-auto">
+          <button onClick={() => setBetAmount(b => Math.max(1, b - 10))} className="text-2xl font-black text-slate-600 hover:text-amber-500">➖</button>
+          <span className="text-2xl font-black w-24 text-center italic">${betAmount.toFixed(0)}</span>
+          <button onClick={() => setBetAmount(b => b + 10)} className="text-2xl font-black text-slate-600 hover:text-amber-500">➕</button>
         </div>
         
         {status === 'FLYING' ? (
           <button 
             onClick={cashOut}
-            className="flex-1 w-full bg-amber-600 hover:bg-amber-500 py-8 rounded-[2.5rem] font-black text-3xl uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all italic border border-amber-400/30"
+            className="flex-1 w-full bg-gradient-to-r from-amber-500 to-amber-700 hover:from-amber-400 py-6 rounded-2xl font-black text-2xl uppercase tracking-[0.3em] shadow-[0_0_30px_rgba(245,158,11,0.3)] active:scale-95 transition-all italic border border-amber-400/30"
           >
             CASH OUT
           </button>
         ) : (
           <button 
             onClick={startRound}
-            /* Fix: Remove redundant status check as narrowing ensures status is not 'FLYING' in this branch */
-            disabled={hasInsufficientLiquidity}
-            className={`flex-1 w-full py-8 rounded-[2.5rem] font-black text-3xl uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all italic border ${
-              hasInsufficientLiquidity 
+            disabled={user.balanceUSDT < betAmount}
+            className={`flex-1 w-full py-6 rounded-2xl font-black text-2xl uppercase tracking-[0.3em] shadow-2xl active:scale-95 transition-all italic border ${
+              user.balanceUSDT < betAmount 
               ? 'bg-slate-900 text-slate-700 border-slate-800 grayscale' 
-              : 'bg-green-600 hover:bg-green-500 text-white border-green-400/30'
+              : 'bg-green-600 hover:bg-green-500 text-white border-green-400/30 shadow-[0_0_30px_rgba(34,197,94,0.2)]'
             }`}
           >
-            {hasInsufficientLiquidity ? 'INSUFFICIENT' : 'PLACE BET'}
+            {user.balanceUSDT < betAmount ? 'LOW LIQUIDITY' : 'BET'}
           </button>
         )}
       </div>
@@ -213,12 +268,17 @@ const CasinoView: React.FC<CasinoViewProps> = ({ user, onBet }) => {
             >
               <i className="fa-solid fa-xmark text-2xl"></i>
             </button>
-            {selectedGame.demoUrl === 'INTERNAL_CRASH' ? (
+            {selectedGame.demoUrl === 'INTERNAL_AVIATOR' ? (
               <AviatorSimulator user={user} onBet={onBet} />
             ) : selectedGame.demoUrl === 'INTERNAL_ROULETTE' ? (
               <RouletteSimulator user={user} onBet={onBet} />
             ) : (
-              <iframe src={selectedGame.demoUrl} className="w-full h-full border-none" />
+              <iframe 
+                src={selectedGame.demoUrl} 
+                className="w-full h-full border-none bg-black" 
+                allow="autoplay; encrypted-media; fullscreen"
+                title={selectedGame.name}
+              />
             )}
           </div>
         </div>
@@ -247,7 +307,7 @@ const CasinoView: React.FC<CasinoViewProps> = ({ user, onBet }) => {
       </div>
 
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6 md:gap-8">
-        {PLAYABLE_GAMES.filter(g => g.category === activeCategory || activeCategory === 'Slots').map(game => (
+        {PLAYABLE_GAMES.filter(g => activeCategory === 'Slots' || g.category === activeCategory).map(game => (
           <div 
             key={game.id} 
             onClick={() => setSelectedGame(game)} 
@@ -261,10 +321,13 @@ const CasinoView: React.FC<CasinoViewProps> = ({ user, onBet }) => {
                      <i className="fa-solid fa-play text-white text-xl"></i>
                   </div>
                </div>
+               <div className="absolute top-4 left-4">
+                  <span className="bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg text-[9px] font-black text-slate-300 uppercase tracking-widest border border-white/5">{game.provider}</span>
+               </div>
             </div>
             <div className="p-6">
-              <span className="text-[9px] font-black text-purple-500 uppercase tracking-[0.4em] font-rajdhani">{game.provider}</span>
-              <h4 className="text-sm font-black truncate text-slate-100 uppercase mt-2 font-rajdhani tracking-wider">{game.name}</h4>
+              <h4 className="text-sm font-black truncate text-slate-100 uppercase font-rajdhani tracking-wider">{game.name}</h4>
+              <p className="text-[10px] text-slate-500 font-bold uppercase mt-1 tracking-widest">{game.category}</p>
             </div>
           </div>
         ))}
