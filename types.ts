@@ -1,4 +1,6 @@
 
+export type Language = 'EN' | 'BN' | 'HI' | 'UR' | 'NE' | 'AF' | 'MY' | 'BT' | 'MV';
+
 export enum AppView {
   DASHBOARD = 'DASHBOARD',
   PROFILE = 'PROFILE',
@@ -47,7 +49,6 @@ export interface User {
   balanceBNB: number;
   email?: string;
   phone?: string;
-  // Added password field to User interface for mock DB authentication
   password?: string;
 }
 
@@ -63,6 +64,7 @@ export interface MLMStats {
   directPartners: number;
   totalTeam: number;
   totalWebsiteUsers: number;
+  bettingVolume: number;
 }
 
 export interface Level {
@@ -89,7 +91,7 @@ export interface Match {
 
 export interface Transaction {
   id: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'LEVEL_PAY' | 'COMMISSION' | 'BET_WIN' | 'BET_LOSS';
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'LEVEL_PAY' | 'COMMISSION' | 'BET_WIN' | 'BET_LOSS' | 'SALARY';
   amount: number;
   status: 'COMPLETED' | 'PENDING' | 'FAILED';
   date: string;

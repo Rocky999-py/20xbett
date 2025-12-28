@@ -1,34 +1,37 @@
 
 import React from 'react';
-import { AppView } from '../types';
+import { AppView, Language } from '../types';
 import Logo from './Logo';
+import { translations } from '../translations';
 
 interface SidebarProps {
   activeView: AppView;
   setView: (view: AppView) => void;
   isOpen: boolean;
   setIsOpen: (open: boolean) => void;
+  lang: Language;
 }
 
-const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isOpen, setIsOpen }) => {
+const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isOpen, setIsOpen, lang }) => {
+  const t = (key: string) => translations[lang][key] || key;
+
   const menuItems = [
-    { id: AppView.DASHBOARD, label: 'Dashboard', icon: 'fa-solid fa-gauge-high' },
-    { id: AppView.GAME_PORTAL, label: 'Game Portal', icon: 'fa-solid fa-gamepad' },
-    { id: AppView.BETTING, label: 'Betting', icon: 'fa-solid fa-futbol' },
-    { id: AppView.CASINO, label: 'Casino', icon: 'fa-solid fa-clover' },
-    { id: AppView.PROFILE, label: 'Profile', icon: 'fa-solid fa-user-shield' },
-    { id: AppView.REFERRAL, label: 'Referral', icon: 'fa-solid fa-link' },
-    { id: AppView.TEAM, label: 'My Team', icon: 'fa-solid fa-users-rays' },
-    { id: AppView.MLM_SALARY, label: 'Salary Hub', icon: 'fa-solid fa-money-bill-trend-up' },
-    { id: AppView.WALLET, label: 'Wallet', icon: 'fa-solid fa-wallet' },
-    { id: AppView.TRANSACTIONS, label: 'Logs', icon: 'fa-solid fa-clock-rotate-left' },
+    { id: AppView.DASHBOARD, label: t('dashboard'), icon: 'fa-solid fa-gauge-high' },
+    { id: AppView.GAME_PORTAL, label: 'Game Center', icon: 'fa-solid fa-gamepad' },
+    { id: AppView.BETTING, label: t('betting'), icon: 'fa-solid fa-futbol' },
+    { id: AppView.CASINO, label: t('casino'), icon: 'fa-solid fa-clover' },
+    { id: AppView.PROFILE, label: t('profile'), icon: 'fa-solid fa-user-shield' },
+    { id: AppView.REFERRAL, label: t('invite_friends'), icon: 'fa-solid fa-link' },
+    { id: AppView.TEAM, label: t('team'), icon: 'fa-solid fa-users-rays' },
+    { id: AppView.MLM_SALARY, label: t('salary'), icon: 'fa-solid fa-money-bill-trend-up' },
+    { id: AppView.WALLET, label: t('wallet'), icon: 'fa-solid fa-wallet' },
+    { id: AppView.TRANSACTIONS, label: 'History', icon: 'fa-solid fa-clock-rotate-left' },
     { id: AppView.SETTINGS, label: 'Settings', icon: 'fa-solid fa-sliders' },
-    { id: AppView.SUPPORT, label: 'Help Desk', icon: 'fa-solid fa-headset' },
+    { id: AppView.SUPPORT, label: t('support'), icon: 'fa-solid fa-headset' },
   ];
 
   return (
     <>
-      {/* Mobile Overlay */}
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/80 backdrop-blur-md z-[100] lg:hidden"
@@ -36,7 +39,6 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isOpen, setIsOpe
         ></div>
       )}
 
-      {/* Main Sidebar */}
       <aside className={`
         fixed inset-y-0 left-0 w-72 bg-[#010409] border-r border-slate-800/50 z-[110] 
         transform transition-transform duration-500 ease-in-out lg:relative lg:transform-none
@@ -73,12 +75,11 @@ const Sidebar: React.FC<SidebarProps> = ({ activeView, setView, isOpen, setIsOpe
         </nav>
 
         <div className="p-8">
-          <div className="bg-slate-900/40 rounded-3xl p-5 border border-amber-500/5 shadow-inner-deep">
-            <div className="flex items-center justify-between mb-2">
-              <span className="text-[10px] text-slate-600 font-black uppercase tracking-widest font-rajdhani">Mainnet Sync</span>
-              <span className="flex h-2 w-2 rounded-full bg-amber-500 shadow-[0_0_12px_#f59e0b]"></span>
-            </div>
-            <p className="text-[9px] text-slate-400 font-mono truncate tracking-tight opacity-50 uppercase">BEP20 Node Operational</p>
+          <div className="bg-slate-900/40 rounded-3xl p-5 border border-amber-500/5 shadow-inner-deep text-center">
+            <span className="text-[10px] text-green-500 font-black uppercase tracking-widest font-rajdhani flex items-center justify-center">
+              <span className="flex h-2 w-2 rounded-full bg-green-500 mr-2 animate-pulse"></span>
+              Live & Secure
+            </span>
           </div>
         </div>
       </aside>

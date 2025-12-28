@@ -1,13 +1,14 @@
 
 import React, { useState } from 'react';
-import { User, Transaction } from '../types';
+import { User, Transaction, Language } from '../types';
 
 interface WalletViewProps {
   user: User;
   transactions: Transaction[];
+  lang: Language;
 }
 
-const WalletView: React.FC<WalletViewProps> = ({ user, transactions }) => {
+const WalletView: React.FC<WalletViewProps> = ({ user, transactions, lang }) => {
   const [modalType, setModalType] = useState<'DEPOSIT' | 'WITHDRAW' | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string | null>(null);
   const [isWaiting, setIsWaiting] = useState(false);

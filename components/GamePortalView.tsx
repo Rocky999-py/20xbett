@@ -1,12 +1,13 @@
 
 import React from 'react';
-import { AppView } from '../types';
+import { AppView, Language } from '../types';
 
 interface GamePortalViewProps {
   setView: (view: AppView) => void;
+  lang: Language;
 }
 
-const GamePortalView: React.FC<GamePortalViewProps> = ({ setView }) => {
+const GamePortalView: React.FC<GamePortalViewProps> = ({ setView, lang }) => {
   return (
     <div className="space-y-10 animate-in fade-in zoom-in-95 duration-700">
       {/* 🚀 Dynamic Global Ticker */}

@@ -1,91 +1,67 @@
 
 import React from 'react';
-import { MLMStats, User } from '../types';
-import { LEVELS } from '../constants';
+import { MLMStats, User, Language } from '../types.ts';
+import { LEVELS } from '../constants.tsx';
 
 interface MLMViewProps {
   stats: MLMStats;
   user: User;
   onUpgrade: (levelId: number, price: number) => void;
+  lang: Language;
 }
 
-const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade }) => {
+const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
   const handleActivate = (levelId: number, price: number) => {
     if (user.balanceUSDT < price) {
-      alert(`Insufficient balance: Level ${levelId} requires $${price}.`);
+      alert(`SYSTEM ERROR: Insufficient USDT Liquidity. Level ${levelId} requires $${price}.`);
       return;
     }
     onUpgrade(levelId, price);
   };
 
-  return (
-    <div className="space-y-12 md:space-y-16 animate-in fade-in duration-700">
-      <div className="flex flex-col md:flex-row items-center justify-between gap-6 relative">
-        <div className="relative z-10">
-          <h2 className="text-3xl md:text-4xl font-rajdhani font-black text-white tracking-widest uppercase italic flex items-center">
-            <span className="w-12 h-[2px] bg-gradient-to-r from-amber-500 to-transparent mr-4"></span>
-            ELITE HIERARCHY
-          </h2>
-          <p className="text-[10px] text-amber-500/70 font-bold tracking-[0.4em] ml-16 mt-1 uppercase">Instant BEP20 Activation Protocol</p>
-        </div>
-        <div className="flex items-center space-x-4 bg-slate-900/50 p-2 rounded-2xl border border-white/5 backdrop-blur-md">
-           <div className="px-4 py-2 bg-amber-500/10 rounded-xl border border-amber-500/20">
-              <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Global Status: Active</span>
-           </div>
-        </div>
-      </div>
+  const salaryProgress = Math.min(100, (stats.totalTeam / 200) * 100);
+  const volumeProgress = Math.min(100, (stats.bettingVolume / 20000) * 100);
 
+  return (
+    <div className="space-y-12 md:space-y-16 animate-in fade-in duration-700 pb-20 font-rajdhani">
+      {/* 8-Tier Level Program */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         {LEVELS.map((level) => {
           const isActive = user.currentLevel >= level.id;
           return (
-            <div key={level.id} className={`group relative p-1 rounded-[2.5rem] transition-all duration-500 ${isActive ? 'shadow-[0_0_30px_rgba(245,158,11,0.2)]' : 'hover:border-cyan-500/20'}`}>
-              <div className="absolute inset-0 bg-gradient-to-br from-white/10 to-transparent rounded-[2.5rem] opacity-0 group-hover:opacity-100 transition-opacity"></div>
-              
-              <div className={`relative h-full bg-gradient-to-br from-[#0f172a] via-[#020617] to-[#1e1b4b] p-8 rounded-[2.4rem] border ${isActive ? 'border-amber-500/30' : 'border-white/5'} overflow-hidden shadow-inner-deep transition-all duration-500 group-hover:translate-y-[-5px]`}>
-                {/* Visual Flair */}
-                <div className="absolute top-0 right-0 w-24 h-24 bg-amber-500/5 blur-3xl rounded-full translate-x-12 -translate-y-12"></div>
-                
+            <div key={level.id} className={`group relative p-1 rounded-[2.5rem] transition-all duration-500 ${isActive ? 'shadow-[0_0_40px_rgba(245,158,11,0.2)]' : 'hover:border-amber-500/20'}`}>
+              <div className={`relative h-full bg-gradient-to-br from-[#0f172a] via-[#020617] to-[#1e1b4b] p-8 rounded-[2.4rem] border ${isActive ? 'border-amber-500/40' : 'border-white/5'} overflow-hidden shadow-inner-deep transition-all duration-500 group-hover:-translate-y-2`}>
                 <div className="flex justify-between items-start mb-6">
-                  <div className="text-4xl transform group-hover:rotate-12 transition-transform duration-500">
-                    {isActive ? '👑' : '💎'}
+                  <div className="text-4xl filter drop-shadow-[0_0_10px_rgba(255,255,255,0.2)]">
+                    {level.id === 8 ? '💎' : level.id >= 6 ? '🏆' : '👑'}
                   </div>
                   <div className="px-3 py-1 bg-white/5 backdrop-blur-md rounded-lg border border-white/10">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Tier 0{level.id}</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Matrix Tier 0{level.id}</span>
                   </div>
                 </div>
                 
-                <h3 className="text-xl font-rajdhani font-black text-white mb-2 uppercase tracking-tight group-hover:text-amber-400 transition-colors">{level.name}</h3>
-                <p className="text-[11px] text-slate-500 font-bold leading-relaxed mb-8 h-12 overflow-hidden">{level.description}</p>
+                <h3 className="text-xl font-black text-white mb-2 uppercase tracking-tight group-hover:text-amber-400 transition-colors italic">{level.name}</h3>
+                <p className="text-[10px] text-slate-500 font-bold leading-relaxed mb-8 h-12 uppercase tracking-wider">{level.description}</p>
                 
                 <div className="flex justify-between items-end mb-8 pt-4 border-t border-white/5">
                   <div>
-                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest block mb-1">Activation Fee</span>
+                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest block mb-1">Entry Protocol</span>
                     <div className="flex items-baseline space-x-1">
-                      <span className="text-3xl font-rajdhani font-black text-white italic">${level.priceUSD}</span>
-                      <span className="text-[10px] text-slate-600 font-bold">USDT</span>
+                      <span className="text-3xl font-black text-white italic">${level.priceUSD}</span>
+                      <span className="text-[10px] text-amber-500 font-black">USDT</span>
                     </div>
                   </div>
-                  {isActive && (
-                    <div className="w-8 h-8 rounded-full bg-green-500/20 border border-green-500/40 flex items-center justify-center text-green-400 text-xs">
-                      ✓
-                    </div>
-                  )}
                 </div>
 
                 <button 
                   onClick={() => handleActivate(level.id, level.priceUSD)}
                   disabled={isActive}
-                  className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-widest transition-all relative overflow-hidden group/btn ${
-                    isActive ? 'bg-slate-800 text-slate-600 cursor-default' : 'bg-gradient-to-r from-amber-600 to-orange-700 text-white shadow-lg active:scale-95'
+                  className={`w-full py-4 rounded-2xl font-black uppercase text-xs tracking-[0.3em] transition-all relative overflow-hidden group/btn ${
+                    isActive ? 'bg-slate-800 text-slate-600 cursor-default' : 'bg-gradient-to-r from-amber-600 to-orange-700 text-white shadow-xl active:scale-95'
                   }`}
                 >
-                  <span className="relative z-10">{isActive ? 'Access Unlocked' : 'Initialize Tier'}</span>
-                  {!isActive && <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover/btn:translate-x-[100%] transition-transform duration-500"></div>}
+                  <span className="relative z-10 italic">{isActive ? 'NODE ACTIVE' : 'ACTIVATE NODE'}</span>
                 </button>
-
-                {/* Depth shading */}
-                <div className="absolute inset-x-0 bottom-0 h-1/4 bg-gradient-to-t from-black/40 to-transparent pointer-events-none"></div>
               </div>
             </div>
           );
@@ -93,87 +69,89 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade }) => {
       </div>
 
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-10">
-        {/* Generational Matrix */}
-        <div className="group relative">
-          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-600/20 via-blue-500/20 to-purple-600/20 rounded-[3.5rem] blur opacity-75 group-hover:opacity-100 transition duration-1000"></div>
-          <div className="relative bg-gradient-to-b from-[#0f172a] to-[#020617] border border-slate-800 p-10 rounded-[3.4rem] shadow-2xl overflow-hidden shadow-inner-deep">
-            <h3 className="text-2xl font-rajdhani font-black text-white mb-10 tracking-widest uppercase flex items-center">
-              <span className="relative flex h-3 w-3 mr-4">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-3 w-3 bg-cyan-500"></span>
-              </span>
-              GENERATION YIELD
-            </h3>
-            
-            <div className="space-y-4 relative z-10">
-              {[
-                { gen: 'Gen 1: Primary', count: stats.directPartners, rate: '10%', sub: 'Direct Partners', color: 'from-cyan-500' },
-                { gen: 'Gen 2: Secondary', count: 42, rate: '5%', sub: 'Indirect Yield', color: 'from-blue-500' },
-                { gen: 'Gen 3: Tertiary', count: 128, rate: '3%', sub: 'Network Matrix', color: 'from-indigo-500' },
-                { gen: 'Gen 4: Quaternary', count: 350, rate: '2%', sub: 'Global Scale', color: 'from-purple-500' },
-                { gen: 'Gen 5: Quinary', count: 980, rate: '1%', sub: 'Royalty Node', color: 'from-rose-500' },
-              ].map((g, i) => (
-                <div key={i} className="group/item flex items-center justify-between p-5 bg-slate-950/50 rounded-3xl border border-white/5 hover:border-white/10 transition-all cursor-pointer">
-                  <div className="flex items-center space-x-6">
-                    <span className="text-3xl font-rajdhani font-black text-slate-800 group-hover/item:text-cyan-500 transition-colors">0{i+1}</span>
-                    <div>
-                      <p className="text-sm font-black text-slate-100 uppercase tracking-tight">{g.gen}</p>
-                      <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">{g.sub}</p>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-rajdhani font-black text-white leading-none mb-1 group-hover/item:scale-110 transition-transform">{g.rate}</p>
-                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">{g.count} Active Nodes</p>
+        {/* 5-Generation Matrix Distribution */}
+        <div className="relative bg-gradient-to-b from-[#0f172a] to-[#020617] border border-slate-800 p-10 rounded-[3.4rem] shadow-2xl overflow-hidden shadow-inner-deep">
+          <div className="flex justify-between items-center mb-10">
+             <h3 className="text-2xl font-black text-white tracking-widest uppercase italic">5-Gen Matrix Yield</h3>
+             <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full font-black uppercase tracking-widest animate-pulse">Auto-Settling</span>
+          </div>
+          
+          <div className="space-y-4 relative z-10">
+            {[
+              { gen: 'Generation 1', rate: '10%', income: stats.referralIncome, desc: 'Direct Node Commission' },
+              { gen: 'Generation 2', rate: '5%', income: 420.50, desc: 'Secondary Network Yield' },
+              { gen: 'Generation 3', rate: '3%', income: 128.00, desc: 'Tertiary Matrix Reward' },
+              { gen: 'Generation 4', rate: '2%', income: 65.20, desc: 'Quaternary Scaling' },
+              { gen: 'Generation 5', rate: '1%', income: 12.00, desc: 'Quinary Royalty' },
+            ].map((g, i) => (
+              <div key={i} className="flex items-center justify-between p-6 bg-slate-950/50 rounded-3xl border border-white/5 hover:border-amber-500/30 transition-all cursor-default group">
+                <div className="flex items-center space-x-6">
+                  <span className="text-3xl font-black text-slate-800 group-hover:text-amber-500 transition-colors italic">0{i+1}</span>
+                  <div>
+                    <p className="text-sm font-black text-white uppercase italic">{g.gen}</p>
+                    <p className="text-[9px] text-slate-600 font-black uppercase tracking-widest">{g.desc}</p>
                   </div>
                 </div>
-              ))}
-            </div>
-            
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom_right,rgba(30,58,138,0.1),transparent_50%)] pointer-events-none"></div>
+                <div className="text-right">
+                  <p className="text-2xl font-black text-white leading-none mb-1">{g.rate}</p>
+                  <p className="text-[10px] text-emerald-500 font-black uppercase tracking-widest">+ ${g.income.toFixed(2)}</p>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
 
-        {/* Salary Engine */}
-        <div className="group relative">
-          <div className="absolute -inset-1 bg-gradient-to-b from-indigo-600/20 to-slate-900/20 rounded-[3.5rem] blur opacity-75"></div>
-          <div className="relative bg-gradient-to-b from-[#0f172a] via-[#020617] to-[#020617] p-10 rounded-[3.4rem] border border-slate-800 shadow-2xl overflow-hidden shadow-inner-deep">
-            <h3 className="text-2xl font-rajdhani font-black text-white mb-4 tracking-widest uppercase">FOUNDER SALARY NODE</h3>
-            <p className="text-xs text-slate-500 mb-12 font-bold leading-relaxed uppercase tracking-wider">Synchronize 200 active team nodes to trigger the automated BEP20 monthly salary stream.</p>
-            
-            <div className="space-y-8 relative z-10">
-              <div className="p-6 bg-slate-950/50 rounded-3xl border border-white/5">
-                <div className="flex justify-between items-end mb-4 px-2">
-                   <span className="text-[10px] text-slate-500 font-black uppercase tracking-widest">Network Saturation</span>
-                   <span className="text-sm font-black text-cyan-400 font-mono tracking-widest">{stats.totalTeam} / 200</span>
-                </div>
-                <div className="h-6 bg-slate-900 rounded-full border border-white/5 p-1 relative overflow-hidden shadow-inner">
-                  <div className="h-full bg-gradient-to-r from-cyan-600 via-blue-600 to-purple-600 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.5)] transition-all duration-2000 ease-out" style={{ width: `${Math.min(100, (stats.totalTeam/200)*100)}%` }}>
-                    <div className="absolute inset-0 bg-white/20 animate-[marquee_2s_linear_infinite] w-[200%] opacity-20"></div>
-                  </div>
-                </div>
+        {/* Founder Salary Engine (Progress Tracking) */}
+        <div className="relative bg-gradient-to-br from-[#0f172a] via-[#020617] to-[#1e1b4b] p-10 rounded-[3.4rem] border border-white/5 shadow-2xl overflow-hidden shadow-inner-deep">
+          <h3 className="text-2xl font-black text-white mb-4 tracking-widest uppercase italic">Founder Salary Engine</h3>
+          <p className="text-[10px] text-slate-500 mb-12 font-black uppercase tracking-widest leading-relaxed italic">Synchronize 200 nodes & $20k Team Volume to trigger the USDT Monthly Salary stream.</p>
+          
+          <div className="space-y-10 relative z-10">
+            {/* Team Nodes Requirement */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-end px-2">
+                 <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Node Saturation Protocol</span>
+                 <span className="text-sm font-black text-amber-500 italic">{stats.totalTeam} / 200 ACTIVE</span>
               </div>
-              
-              <div className="grid grid-cols-2 gap-6">
-                 <div className="group/stat bg-slate-950/80 p-8 rounded-[2rem] border border-white/5 text-center hover:border-green-500/30 transition-all shadow-inner">
-                    <div className="text-3xl mb-4 group-hover/stat:scale-125 transition-transform duration-500">💳</div>
-                    <p className="text-[9px] text-slate-600 font-black uppercase mb-2 tracking-widest">Allocated Share</p>
-                    <div className="flex items-baseline justify-center space-x-1">
-                      <p className="text-3xl font-rajdhani font-black text-white italic">${stats.monthlySalary}</p>
-                      <span className="text-[10px] text-slate-600 font-bold">USDT</span>
-                    </div>
-                 </div>
-                 <div className="group/stat bg-slate-950/80 p-8 rounded-[2rem] border border-white/5 text-center hover:border-amber-500/30 transition-all shadow-inner">
-                    <div className="text-3xl mb-4 group-hover/stat:scale-125 transition-transform duration-500">🏦</div>
-                    <p className="text-[9px] text-slate-600 font-black uppercase mb-2 tracking-widest">Global Reservoir</p>
-                    <div className="flex items-baseline justify-center space-x-1">
-                      <p className="text-3xl font-rajdhani font-black text-white italic">${stats.mlmMonthlyFund}</p>
-                      <span className="text-[10px] text-slate-600 font-bold">USDT</span>
-                    </div>
-                 </div>
+              <div className="h-5 bg-black rounded-full border border-white/5 p-1">
+                <div className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all duration-1000" style={{ width: `${salaryProgress}%` }}></div>
+              </div>
+            </div>
+
+            {/* Betting Volume Requirement */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-end px-2">
+                 <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Team Volume Synchronization</span>
+                 <span className="text-sm font-black text-cyan-400 italic">${stats.bettingVolume.toLocaleString()} / $20,000</span>
+              </div>
+              <div className="h-5 bg-black rounded-full border border-white/5 p-1">
+                <div className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 rounded-full shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all duration-1000" style={{ width: `${volumeProgress}%` }}></div>
               </div>
             </div>
             
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.05),transparent_50%)] pointer-events-none"></div>
+            <div className="grid grid-cols-2 gap-6 mt-12">
+               <div className="bg-slate-950/80 p-8 rounded-[2rem] border border-white/5 text-center shadow-inner-deep">
+                  <p className="text-[9px] text-slate-600 font-black uppercase mb-3 tracking-widest italic">MLM Monthly Fund</p>
+                  <div className="flex items-baseline justify-center space-x-1">
+                    <p className="text-4xl font-black text-white italic">${stats.mlmMonthlyFund.toFixed(0)}</p>
+                    <span className="text-[10px] text-amber-500 font-black">USDT</span>
+                  </div>
+               </div>
+               <div className="bg-slate-950/80 p-8 rounded-[2rem] border border-white/5 text-center shadow-inner-deep">
+                  <p className="text-[9px] text-slate-600 font-black uppercase mb-3 tracking-widest italic">Betting Monthly Fund</p>
+                  <div className="flex items-baseline justify-center space-x-1">
+                    <p className="text-4xl font-black text-white italic">${stats.bettingMonthlyFund.toFixed(0)}</p>
+                    <span className="text-[10px] text-cyan-500 font-black">USDT</span>
+                  </div>
+               </div>
+            </div>
+
+            <div className="p-6 bg-amber-500/5 rounded-3xl border border-amber-500/10 text-center mt-6">
+               <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] italic">
+                 <i className="fa-solid fa-triangle-exclamation mr-2"></i> 
+                 Salary Nodes refresh every 30 days via BEP20 Smart Contract
+               </p>
+            </div>
           </div>
         </div>
       </div>

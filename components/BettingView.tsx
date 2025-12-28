@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Match } from '../types';
+import { User, Match, Language } from '../types';
 import { SPORTS } from '../constants';
 
 interface PlacedBet {
@@ -39,9 +39,10 @@ const MOCK_MATCHES: Match[] = [
 interface BettingViewProps {
   user: User;
   onBet: (amount: number, isWin: boolean, multiplier?: number) => void;
+  lang: Language;
 }
 
-const BettingView: React.FC<BettingViewProps> = ({ user, onBet }) => {
+const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
   const [activeSport, setActiveSport] = useState('Cricket');
   const [matches, setMatches] = useState<Match[]>(MOCK_MATCHES);
   const [betAmount, setBetAmount] = useState(10);

@@ -1,13 +1,14 @@
 
 import React, { useState, useRef } from 'react';
-import { User } from '../types';
+import { User, Language } from '../types';
 
 interface ProfileViewProps {
   user: User;
   setUser: React.Dispatch<React.SetStateAction<User>>;
+  lang: Language;
 }
 
-const ProfileView: React.FC<ProfileViewProps> = ({ user, setUser }) => {
+const ProfileView: React.FC<ProfileViewProps> = ({ user, setUser, lang }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [formData, setFormData] = useState({ fullName: user.fullName, profilePic: user.profilePic });
   const fileInputRef = useRef<HTMLInputElement>(null);
