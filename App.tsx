@@ -1,20 +1,20 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { AppView, User, MLMStats, Transaction, LiveEvent } from './types';
-import Sidebar from './components/Sidebar';
-import Header from './components/Header';
-import DashboardView from './components/DashboardView';
-import ProfileView from './components/ProfileView';
-import MLMView from './components/MLMView';
-import BettingView from './components/BettingView';
-import CasinoView from './components/CasinoView';
-import WalletView from './components/WalletView';
-import SupportView from './components/SupportView';
-import GamePortalView from './components/GamePortalView';
-import Logo from './components/Logo';
-import RegistrationGuide from './components/RegistrationGuide';
-import AuthView from './components/AuthView';
-import { NexusAPI } from './api';
+import { AppView, User, MLMStats, Transaction, LiveEvent } from './types.ts';
+import Sidebar from './components/Sidebar.tsx';
+import Header from './components/Header.tsx';
+import DashboardView from './components/DashboardView.tsx';
+import ProfileView from './components/ProfileView.tsx';
+import MLMView from './components/MLMView.tsx';
+import BettingView from './components/BettingView.tsx';
+import CasinoView from './components/CasinoView.tsx';
+import WalletView from './components/WalletView.tsx';
+import SupportView from './components/SupportView.tsx';
+import GamePortalView from './components/GamePortalView.tsx';
+import Logo from './components/Logo.tsx';
+import RegistrationGuide from './components/RegistrationGuide.tsx';
+import AuthView from './components/AuthView.tsx';
+import { NexusAPI } from './api.ts';
 
 const INITIAL_USER: User = {
   id: 'NEX-9821-V',

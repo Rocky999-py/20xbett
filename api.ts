@@ -1,6 +1,6 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { User, UserCredentials } from './types';
+import { User, UserCredentials } from './types.ts';
 
 /**
  * Nexus Production API - Hybrid Data Layer
@@ -9,10 +9,14 @@ import { User, UserCredentials } from './types';
  * If not, it falls back to a high-performance local simulation for testing.
  */
 
-const getEnv = (key: string) => {
+const getEnv = (key: string): string | undefined => {
   try {
-    // Attempt to access process.env (Vercel/Node style)
-    return (process.env as any)[key];
+    // Standard Node/Vercel env check
+    if (typeof process !== 'undefined' && process.env) {
+      return (process.env as any)[key];
+    }
+    // Browser fallback (if variables are injected via a build tool like Vite)
+    return (window as any)._env_?.[key];
   } catch {
     return undefined;
   }
@@ -22,8 +26,8 @@ const SUPABASE_URL = getEnv('SUPABASE_URL');
 const SUPABASE_ANON_KEY = getEnv('SUPABASE_ANON_KEY');
 
 // Initialize Supabase only if valid credentials exist
-const isCloudEnabled = SUPABASE_URL && SUPABASE_URL !== 'https://your-project-id.supabase.co';
-const supabase = isCloudEnabled ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY!) : null;
+const isCloudEnabled = !!SUPABASE_URL && SUPABASE_URL !== 'https://your-project-id.supabase.co';
+const supabase = isCloudEnabled ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!) : null;
 
 // Mock database for Local Fallback
 const getLocalDB = () => {
