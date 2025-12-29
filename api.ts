@@ -2,20 +2,11 @@
 import { createClient } from '@supabase/supabase-js';
 import { User, UserCredentials } from './types.ts';
 
-/**
- * Nexus Production API - Hybrid Data Layer
- * 
- * This API automatically detects if Supabase is configured.
- * If not, it falls back to a high-performance local simulation for testing.
- */
-
 const getEnv = (key: string): string | undefined => {
   try {
-    // Standard Node/Vercel env check
     if (typeof process !== 'undefined' && process.env) {
       return (process.env as any)[key];
     }
-    // Browser fallback (if variables are injected via a build tool like Vite)
     return (window as any)._env_?.[key];
   } catch {
     return undefined;
@@ -25,11 +16,9 @@ const getEnv = (key: string): string | undefined => {
 const SUPABASE_URL = getEnv('SUPABASE_URL');
 const SUPABASE_ANON_KEY = getEnv('SUPABASE_ANON_KEY');
 
-// Initialize Supabase only if valid credentials exist
 const isCloudEnabled = !!SUPABASE_URL && SUPABASE_URL !== 'https://your-project-id.supabase.co';
 const supabase = isCloudEnabled ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!) : null;
 
-// Mock database for Local Fallback
 const getLocalDB = () => {
   const db = localStorage.getItem('nexus_local_ledger');
   return db ? JSON.parse(db) : { profiles: [] };
@@ -40,24 +29,22 @@ const saveLocalDB = (db: any) => {
 };
 
 export const NexusAPI = {
-  /**
-   * Register a new user node
-   */
   register: async (credentials: UserCredentials & { password?: string }) => {
-    const { name, email, password, phone, metamask, trustwallet } = credentials;
+    const { name, email, password, phone, metamask, trustwallet, isMLM, referralId } = credentials;
 
     const newUser: User = {
-      id: `NEX-${Math.floor(1000 + Math.random() * 9000)}-${name.substring(0, 1).toUpperCase()}`,
+      id: isMLM ? `MLM-${Math.floor(1000 + Math.random() * 9000)}` : `USR-${Math.floor(1000 + Math.random() * 9000)}`,
       fullName: name,
       email,
       phone,
       profilePic: `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
-      walletAddress: metamask || trustwallet || '0x0000...0000',
-      uplineId: 'NEX-0001-A',
+      walletAddress: metamask || trustwallet || '0x3E...8A12',
+      uplineId: isMLM ? (referralId || 'NEX-0001-A') : 'GENERAL',
       joinDate: new Date().toLocaleDateString(),
       currentLevel: 1,
-      balanceUSDT: 100.00, // Starting bonus for new nodes
+      balanceUSDT: isMLM ? 10.00 : 100.00, // Player gets more starting balance
       balanceBNB: 0.15,
+      isMLM: isMLM,
       password: password || 'nopass'
     };
 
@@ -66,8 +53,6 @@ export const NexusAPI = {
       if (error) throw new Error(`CLOUD_DATABASE_ERROR: ${error.message}`);
       return { success: true, user: newUser };
     } else {
-      // Local Fallback
-      console.warn("NEXUS_SYSTEM: Cloud DB not detected. Initializing Local Matrix Node.");
       const db = getLocalDB();
       if (db.profiles.find((p: any) => p.email === email)) {
         throw new Error('LEDGER_ERROR: Email node already indexed locally.');
@@ -78,9 +63,6 @@ export const NexusAPI = {
     }
   },
 
-  /**
-   * Authenticate node
-   */
   login: async (credentials: { email: string; password?: string }) => {
     if (supabase) {
       const { data, error } = await supabase
@@ -100,9 +82,6 @@ export const NexusAPI = {
     }
   },
 
-  /**
-   * Sync Profile / Balance
-   */
   updateProfile: async (userId: string, updates: Partial<User>) => {
     if (supabase) {
       const { data, error } = await supabase

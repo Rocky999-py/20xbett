@@ -1,7 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { AppView, User, MLMStats, Transaction, LiveEvent, Language } from './types.ts';
-import Sidebar from './components/Sidebar.tsx';
 import Header from './components/Header.tsx';
 import DashboardView from './components/DashboardView.tsx';
 import ProfileView from './components/ProfileView.tsx';
@@ -10,10 +9,10 @@ import BettingView from './components/BettingView.tsx';
 import CasinoView from './components/CasinoView.tsx';
 import WalletView from './components/WalletView.tsx';
 import SupportView from './components/SupportView.tsx';
-import GamePortalView from './components/GamePortalView.tsx';
 import Logo from './components/Logo.tsx';
 import RegistrationGuide from './components/RegistrationGuide.tsx';
 import AuthView from './components/AuthView.tsx';
+import IncomeSummaryView from './components/IncomeSummaryView.tsx';
 import { NexusAPI } from './api.ts';
 import { translations } from './translations.ts';
 
@@ -25,8 +24,9 @@ const INITIAL_USER: User = {
   uplineId: 'NEX-0001-A',
   joinDate: new Date().toLocaleDateString(),
   currentLevel: 1,
-  balanceUSDT: 0.00,
-  balanceBNB: 0.15
+  balanceUSDT: 100.00,
+  balanceBNB: 0.15,
+  isMLM: false
 };
 
 const INITIAL_STATS: MLMStats = {
@@ -38,10 +38,10 @@ const INITIAL_STATS: MLMStats = {
   bettingMonthlySalary: 0.00,
   mlmMonthlyFund: 0.00,
   bettingMonthlyFund: 0.00,
-  directPartners: 0,
-  totalTeam: 0,
+  directPartners: 12,
+  totalTeam: 48,
   totalWebsiteUsers: 12450,
-  bettingVolume: 0.00
+  bettingVolume: 5200.00
 };
 
 const App: React.FC = () => {
@@ -51,12 +51,9 @@ const App: React.FC = () => {
   const [lang, setLang] = useState<Language>('EN');
   const [isWalletConnected, setIsWalletConnected] = useState(false);
   const [isAuthMode, setIsAuthMode] = useState(false);
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isInitializing, setIsInitializing] = useState(true);
   const [liveFeed, setLiveFeed] = useState<LiveEvent[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-
-  const t = (key: string) => translations[lang][key] || key;
 
   useEffect(() => {
     const initNexus = async () => {
@@ -77,103 +74,36 @@ const App: React.FC = () => {
     initNexus();
   }, []);
 
-  const addLiveEvent = useCallback((type: LiveEvent['type'], message: string) => {
-    const newEvent: LiveEvent = {
-      id: Math.random().toString(36).substr(2, 9),
-      type,
-      message,
-      timestamp: new Date().toLocaleTimeString()
-    };
-    setLiveFeed(prev => [newEvent, ...prev].slice(0, 15));
-  }, []);
-
   const handleLoginSuccess = (userData: User) => {
     setUser(userData);
     localStorage.setItem('nexus_active_session', JSON.stringify(userData));
     setIsWalletConnected(true);
     setIsAuthMode(false);
-    addLiveEvent('TEAM', `Account Created: ${userData.fullName}`);
-    
-    setStats({
-      ...INITIAL_STATS,
-      totalProfit: userData.balanceUSDT,
-      totalWebsiteUsers: 12450 + Math.floor(Math.random() * 500)
-    });
   };
 
   const handleBet = async (amount: number, isWin: boolean, multiplier: number = 2) => {
     const finalChange = isWin ? (amount * multiplier) - amount : -amount;
     const newBalance = user.balanceUSDT + finalChange;
-
-    try {
-      const response = await NexusAPI.updateProfile(user.id, { balanceUSDT: newBalance });
-      setUser(response.user);
-
-      const type = isWin ? 'BET_WIN' : 'BET_LOSS';
-      const newTx: Transaction = {
-        id: `TX-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
-        type,
-        amount: finalChange,
-        status: 'COMPLETED',
-        date: new Date().toISOString().split('T')[0]
-      };
-      setTransactions(prev => [newTx, ...prev]);
-      addLiveEvent(isWin ? 'INCOME' : 'BONUS', `${isWin ? t('win') : t('loss')}: $${Math.abs(finalChange).toFixed(2)}`);
-    } catch (e) {
-      console.error('SYNC_ERROR: Balance update failed.');
-    }
+    setUser(prev => ({ ...prev, balanceUSDT: newBalance }));
+    
+    const newTx: Transaction = {
+      id: `TX-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
+      type: isWin ? 'BET_WIN' : 'BET_LOSS',
+      amount: finalChange,
+      status: 'COMPLETED',
+      date: new Date().toISOString().split('T')[0]
+    };
+    setTransactions(prev => [newTx, ...prev]);
   };
 
   const handleUpgrade = async (levelId: number, price: number) => {
-    const newBalance = user.balanceUSDT - price;
-    try {
-      const response = await NexusAPI.updateProfile(user.id, { 
-        currentLevel: Math.max(user.currentLevel, levelId),
-        balanceUSDT: newBalance
-      });
-      setUser(response.user);
-
-      const newTx: Transaction = {
-        id: `TX-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
-        type: 'LEVEL_PAY',
-        amount: -price,
-        status: 'COMPLETED',
-        date: new Date().toISOString().split('T')[0]
-      };
-      setTransactions(prev => [newTx, ...prev]);
-      addLiveEvent('LEVEL', `Upgraded to ${t('level')} ${levelId}`);
-    } catch (e) {
-      alert('SYNC_ERROR: Upgrade failed.');
-    }
+    setUser(prev => ({ ...prev, currentLevel: levelId, balanceUSDT: prev.balanceUSDT - price }));
   };
-
-  useEffect(() => {
-    if (!isWalletConnected) return;
-    const interval = setInterval(() => {
-      const types: LiveEvent['type'][] = ['COMMISSION', 'INCOME', 'TEAM', 'LEVEL', 'BONUS'];
-      const randomType = types[Math.floor(Math.random() * types.length)];
-      const msgs = {
-        COMMISSION: 'Money Added: Bonus Received',
-        INCOME: 'Success: Balance Updated',
-        TEAM: 'New member joined your team',
-        LEVEL: 'Level up confirmed',
-        BONUS: 'Reward distributed to wallet'
-      };
-      addLiveEvent(randomType, msgs[randomType]);
-    }, 8000);
-    return () => clearInterval(interval);
-  }, [isWalletConnected, addLiveEvent]);
 
   if (isInitializing) {
     return (
       <div className="min-h-screen bg-[#020617] flex items-center justify-center">
-        <div className="text-center">
-           <Logo size="lg" className="mb-8 animate-rolling" />
-           <div className="w-48 h-1 bg-slate-900 rounded-full overflow-hidden mx-auto">
-              <div className="h-full bg-cyan-500 animate-[marquee_1.5s_linear_infinite] w-[200%]"></div>
-           </div>
-           <p className="mt-4 text-[10px] text-slate-500 font-black uppercase tracking-[0.4em]">{t('loading')}</p>
-        </div>
+        <Logo size="lg" className="animate-rolling" />
       </div>
     );
   }
@@ -183,77 +113,46 @@ const App: React.FC = () => {
     if (!isWalletConnected) {
       return (
         <div className="relative min-h-screen w-full flex flex-col items-center justify-center text-center px-4 overflow-hidden bg-[#020617]">
-          <div className="absolute inset-0 z-0 overflow-hidden">
-            <div className="absolute inset-0 bg-gradient-to-b from-[#020617] via-transparent to-[#020617] z-10"></div>
-            <img 
-              src="https://images.unsplash.com/photo-1518063319789-7217e6706b04?auto=format&fit=crop&q=80&w=2000" 
-              className="w-full h-full object-cover opacity-25 mix-blend-luminosity animate-slow-zoom" 
-              alt="Arena"
-            />
-            <div className="cyber-grid opacity-30"></div>
-          </div>
-
-          <div className="relative z-20 w-full max-w-4xl mx-auto flex flex-col items-center">
-            <div className="mb-8 md:mb-16 flex justify-center w-full">
-              <div className="animate-rolling">
-                <Logo size="xl" />
-              </div>
-            </div>
-
-            <h1 className="text-4xl md:text-8xl font-rajdhani font-black mb-8 tracking-tighter text-white uppercase leading-none px-4 drop-shadow-[0_0_15px_rgba(34,211,238,0.3)]">
-              20XBET <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-blue-500 to-purple-600">SMART GAMING</span>
+          <div className="absolute inset-0 z-0"><div className="cyber-grid opacity-20"></div></div>
+          <div className="relative z-20 w-full max-w-4xl">
+            <Logo size="xl" className="mx-auto mb-12 animate-rolling" />
+            <h1 className="text-5xl md:text-8xl font-rajdhani font-black mb-8 text-white uppercase italic tracking-tighter">
+               <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-blue-600">PREMIUM</span> <br />BETTING NODE
             </h1>
-            
-            <p className="text-slate-300 max-w-2xl mb-14 text-lg md:text-2xl leading-relaxed px-4 font-rajdhani font-medium tracking-wide">
-              The fastest way to earn and play on the <span className="text-amber-500 font-bold">BNB Chain</span>. 100% Automated.
-            </p>
-
-            <div className="flex flex-col sm:flex-row gap-6 w-full max-w-xl px-6">
-              <button onClick={() => setIsAuthMode(true)} className="flex-1 py-6 bg-gradient-to-r from-cyan-600 to-blue-700 rounded-3xl font-black text-2xl shadow-[0_0_50px_rgba(8,145,178,0.3)] border border-cyan-400/30 uppercase tracking-[0.2em] hover:scale-[1.05] transition-all active:scale-95 font-rajdhani">
-                {t('connect_wallet')}
-              </button>
-            </div>
-
-            <div className="w-full max-w-full overflow-x-hidden">
-              <RegistrationGuide />
-            </div>
+            <button onClick={() => setIsAuthMode(true)} className="px-16 py-6 bg-blue-600 hover:bg-blue-500 rounded-2xl font-black text-2xl text-white shadow-2xl transition-all active:scale-95">
+              SYNC WALLET
+            </button>
+            <RegistrationGuide />
           </div>
         </div>
       );
     }
 
     switch (currentView) {
-      case AppView.DASHBOARD: return <DashboardView stats={stats} liveFeed={liveFeed} lang={lang} />;
-      case AppView.GAME_PORTAL: return <GamePortalView setView={setCurrentView} lang={lang} />;
-      case AppView.PROFILE: 
-      case AppView.SETTINGS: return <ProfileView user={user} setUser={setUser} lang={lang} />;
-      case AppView.REFERRAL: 
+      case AppView.DASHBOARD: return <DashboardView stats={stats} liveFeed={liveFeed} lang={lang} setView={setCurrentView} onBet={handleBet} user={user} />;
+      case AppView.PROFILE: return <ProfileView user={user} setUser={setUser} lang={lang} />;
       case AppView.TEAM: 
+      case AppView.REFERRAL:
       case AppView.MLM_SALARY: return <MLMView stats={stats} user={user} onUpgrade={handleUpgrade} lang={lang} />;
+      case AppView.INCOME_SUMMARY: return <IncomeSummaryView stats={stats} lang={lang} />;
       case AppView.BETTING: return <BettingView user={user} onBet={handleBet} lang={lang} />;
       case AppView.CASINO: return <CasinoView user={user} onBet={handleBet} lang={lang} />;
       case AppView.WALLET: return <WalletView user={user} transactions={transactions} lang={lang} />;
       case AppView.SUPPORT: return <SupportView lang={lang} />;
-      default: return <DashboardView stats={stats} liveFeed={liveFeed} lang={lang} />;
+      default: return <DashboardView stats={stats} liveFeed={liveFeed} lang={lang} setView={setCurrentView} onBet={handleBet} user={user} />;
     }
   };
 
   return (
-    <div className="flex min-h-screen bg-[#020617] text-slate-200 selection:bg-cyan-500/30 font-inter">
-      {(isWalletConnected && !isAuthMode) && (
-        <Sidebar activeView={currentView} setView={setCurrentView} isOpen={isMobileMenuOpen} setIsOpen={setIsMobileMenuOpen} lang={lang} />
+    <div className="flex flex-col min-h-screen bg-[#0b1223] text-slate-200">
+      {!isAuthMode && isWalletConnected && (
+        <Header user={user} isConnected={isWalletConnected} onConnect={() => setIsAuthMode(true)} onToggleMenu={() => {}} lang={lang} setLang={setLang} setView={setCurrentView} activeView={currentView} />
       )}
-      <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {!isAuthMode && isWalletConnected && (
-          <Header user={user} isConnected={isWalletConnected} onConnect={() => setIsAuthMode(true)} onToggleMenu={() => setIsMobileMenuOpen(!isMobileMenuOpen)} lang={lang} setLang={setLang} />
-        )}
-        <main className={`flex-1 overflow-y-auto ${isAuthMode ? '' : 'p-4 md:p-6 lg:p-10'} custom-scrollbar`}>
-          <div className="max-w-[1600px] mx-auto">
-            {renderContent()}
-          </div>
-        </main>
-      </div>
+      <main className={`flex-1 overflow-y-auto ${isAuthMode ? '' : 'p-4 md:p-6 lg:p-10'} custom-scrollbar`}>
+        <div className="max-w-[1800px] mx-auto">
+          {renderContent()}
+        </div>
+      </main>
     </div>
   );
 };

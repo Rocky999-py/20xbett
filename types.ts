@@ -26,6 +26,8 @@ export interface UserCredentials {
   metamask?: string;
   trustwallet?: string;
   password?: string;
+  isMLM: boolean;
+  referralId?: string;
 }
 
 export interface Game {
@@ -47,6 +49,7 @@ export interface User {
   currentLevel: number;
   balanceUSDT: number;
   balanceBNB: number;
+  isMLM: boolean;
   email?: string;
   phone?: string;
   password?: string;
@@ -79,7 +82,7 @@ export interface Match {
   sport: string;
   teamA: string;
   teamB: string;
-  startTime: string;
+  startTime: string; // ISO or human-readable
   isLive: boolean;
   marketLocked?: boolean;
   odds: {

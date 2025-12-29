@@ -2,6 +2,7 @@
 import React from 'react';
 import { MLMStats, User, Language } from '../types.ts';
 import { LEVELS } from '../constants.tsx';
+import { translations } from '../translations.ts';
 
 interface MLMViewProps {
   stats: MLMStats;
@@ -11,9 +12,11 @@ interface MLMViewProps {
 }
 
 const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
+  const t = (key: string) => translations[lang][key] || key;
+  
   const handleActivate = (levelId: number, price: number) => {
     if (user.balanceUSDT < price) {
-      alert(`SYSTEM ERROR: Insufficient USDT Liquidity. Level ${levelId} requires $${price}.`);
+      alert(`BALANCE ERROR: Need $${price} USDT to buy this level.`);
       return;
     }
     onUpgrade(levelId, price);
@@ -36,7 +39,7 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
                     {level.id === 8 ? '💎' : level.id >= 6 ? '🏆' : '👑'}
                   </div>
                   <div className="px-3 py-1 bg-white/5 backdrop-blur-md rounded-lg border border-white/10">
-                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">Matrix Tier 0{level.id}</span>
+                    <span className="text-[9px] font-black text-slate-400 uppercase tracking-[0.2em]">{t('level')} 0{level.id}</span>
                   </div>
                 </div>
                 
@@ -45,7 +48,7 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
                 
                 <div className="flex justify-between items-end mb-8 pt-4 border-t border-white/5">
                   <div>
-                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest block mb-1">Entry Protocol</span>
+                    <span className="text-[9px] text-slate-500 font-black uppercase tracking-widest block mb-1">{t('amount')}</span>
                     <div className="flex items-baseline space-x-1">
                       <span className="text-3xl font-black text-white italic">${level.priceUSD}</span>
                       <span className="text-[10px] text-amber-500 font-black">USDT</span>
@@ -60,7 +63,7 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
                     isActive ? 'bg-slate-800 text-slate-600 cursor-default' : 'bg-gradient-to-r from-amber-600 to-orange-700 text-white shadow-xl active:scale-95'
                   }`}
                 >
-                  <span className="relative z-10 italic">{isActive ? 'NODE ACTIVE' : 'ACTIVATE NODE'}</span>
+                  <span className="relative z-10 italic">{isActive ? t('active') : t('activate')}</span>
                 </button>
               </div>
             </div>
@@ -72,17 +75,17 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
         {/* 5-Generation Matrix Distribution */}
         <div className="relative bg-gradient-to-b from-[#0f172a] to-[#020617] border border-slate-800 p-10 rounded-[3.4rem] shadow-2xl overflow-hidden shadow-inner-deep">
           <div className="flex justify-between items-center mb-10">
-             <h3 className="text-2xl font-black text-white tracking-widest uppercase italic">5-Gen Matrix Yield</h3>
-             <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full font-black uppercase tracking-widest animate-pulse">Auto-Settling</span>
+             <h3 className="text-2xl font-black text-white tracking-widest uppercase italic">{t('referral_income')} (5 Gen)</h3>
+             <span className="text-[9px] bg-amber-500/10 text-amber-500 border border-amber-500/20 px-3 py-1 rounded-full font-black uppercase tracking-widest animate-pulse">Live Sync</span>
           </div>
           
           <div className="space-y-4 relative z-10">
             {[
-              { gen: 'Generation 1', rate: '10%', income: stats.referralIncome, desc: 'Direct Node Commission' },
-              { gen: 'Generation 2', rate: '5%', income: 420.50, desc: 'Secondary Network Yield' },
-              { gen: 'Generation 3', rate: '3%', income: 128.00, desc: 'Tertiary Matrix Reward' },
-              { gen: 'Generation 4', rate: '2%', income: 65.20, desc: 'Quaternary Scaling' },
-              { gen: 'Generation 5', rate: '1%', income: 12.00, desc: 'Quinary Royalty' },
+              { gen: 'Generation 1', rate: '10%', income: stats.referralIncome, desc: 'Level 1 Friends' },
+              { gen: 'Generation 2', rate: '5%', income: 420.50, desc: 'Level 2 Friends' },
+              { gen: 'Generation 3', rate: '3%', income: 128.00, desc: 'Level 3 Friends' },
+              { gen: 'Generation 4', rate: '2%', income: 65.20, desc: 'Level 4 Friends' },
+              { gen: 'Generation 5', rate: '1%', income: 12.00, desc: 'Level 5 Friends' },
             ].map((g, i) => (
               <div key={i} className="flex items-center justify-between p-6 bg-slate-950/50 rounded-3xl border border-white/5 hover:border-amber-500/30 transition-all cursor-default group">
                 <div className="flex items-center space-x-6">
@@ -103,15 +106,15 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
 
         {/* Founder Salary Engine (Progress Tracking) */}
         <div className="relative bg-gradient-to-br from-[#0f172a] via-[#020617] to-[#1e1b4b] p-10 rounded-[3.4rem] border border-white/5 shadow-2xl overflow-hidden shadow-inner-deep">
-          <h3 className="text-2xl font-black text-white mb-4 tracking-widest uppercase italic">Founder Salary Engine</h3>
-          <p className="text-[10px] text-slate-500 mb-12 font-black uppercase tracking-widest leading-relaxed italic">Synchronize 200 nodes & $20k Team Volume to trigger the USDT Monthly Salary stream.</p>
+          <h3 className="text-2xl font-black text-white mb-4 tracking-widest uppercase italic">{t('salary')} Goal</h3>
+          <p className="text-[10px] text-slate-500 mb-12 font-black uppercase tracking-widest leading-relaxed italic">Get 200 members & $20k Team Volume to unlock your monthly pay.</p>
           
           <div className="space-y-10 relative z-10">
             {/* Team Nodes Requirement */}
             <div className="space-y-4">
               <div className="flex justify-between items-end px-2">
-                 <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Node Saturation Protocol</span>
-                 <span className="text-sm font-black text-amber-500 italic">{stats.totalTeam} / 200 ACTIVE</span>
+                 <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">{t('total_team')}</span>
+                 <span className="text-sm font-black text-amber-500 italic">{stats.totalTeam} / 200 {t('active')}</span>
               </div>
               <div className="h-5 bg-black rounded-full border border-white/5 p-1">
                 <div className="h-full bg-gradient-to-r from-amber-600 to-amber-400 rounded-full shadow-[0_0_15px_rgba(245,158,11,0.4)] transition-all duration-1000" style={{ width: `${salaryProgress}%` }}></div>
@@ -121,7 +124,7 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
             {/* Betting Volume Requirement */}
             <div className="space-y-4">
               <div className="flex justify-between items-end px-2">
-                 <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Team Volume Synchronization</span>
+                 <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest italic">Team Play Volume</span>
                  <span className="text-sm font-black text-cyan-400 italic">${stats.bettingVolume.toLocaleString()} / $20,000</span>
               </div>
               <div className="h-5 bg-black rounded-full border border-white/5 p-1">
@@ -149,7 +152,7 @@ const MLMView: React.FC<MLMViewProps> = ({ stats, user, onUpgrade, lang }) => {
             <div className="p-6 bg-amber-500/5 rounded-3xl border border-amber-500/10 text-center mt-6">
                <p className="text-[10px] text-amber-500 font-black uppercase tracking-[0.2em] italic">
                  <i className="fa-solid fa-triangle-exclamation mr-2"></i> 
-                 Salary Nodes refresh every 30 days via BEP20 Smart Contract
+                 Salary is paid every 30 days automatically.
                </p>
             </div>
           </div>
