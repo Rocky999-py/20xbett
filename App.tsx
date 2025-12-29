@@ -82,14 +82,21 @@ const App: React.FC = () => {
   };
 
   const handleBet = async (amount: number, isWin: boolean, multiplier: number = 2) => {
-    const finalChange = isWin ? (amount * multiplier) - amount : -amount;
-    const newBalance = user.balanceUSDT + finalChange;
-    setUser(prev => ({ ...prev, balanceUSDT: newBalance }));
+    // Correct ledger logic: 
+    // If win: User gets Profit = (amount * multiplier) - amount
+    // If loss: User loses amount
+    const profit = (amount * multiplier) - amount;
+    const netChange = isWin ? profit : -amount;
+    
+    setUser(prev => ({ 
+      ...prev, 
+      balanceUSDT: Number((prev.balanceUSDT + netChange).toFixed(2)) 
+    }));
     
     const newTx: Transaction = {
       id: `TX-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
       type: isWin ? 'BET_WIN' : 'BET_LOSS',
-      amount: finalChange,
+      amount: netChange,
       status: 'COMPLETED',
       date: new Date().toISOString().split('T')[0]
     };

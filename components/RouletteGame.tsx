@@ -28,7 +28,21 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
     setResult(null);
 
     setTimeout(() => {
-      const num = Math.floor(Math.random() * 37);
+      // HOUSE EDGE LOGIC: 35% win rate limit.
+      const rigRoll = Math.random();
+      let num;
+      
+      if (rigRoll > 0.35) {
+        // Force a loss. 
+        // We look for a number that DOES NOT match selectedType.
+        if (selectedType === 'RED') num = 1; // Black
+        else if (selectedType === 'BLACK') num = 2; // Red
+        else num = 1; // Not Zero
+      } else {
+        // Normal roll (Chance to win)
+        num = Math.floor(Math.random() * 37);
+      }
+      
       setResult(num);
       setIsSpinning(false);
       setHistory(h => [num, ...h].slice(0, 10));
@@ -53,7 +67,6 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-between p-4 md:p-8 bg-[#0b1223] font-rajdhani overflow-hidden">
-      {/* History */}
       <div className="w-full flex justify-center gap-2 mb-6">
         {history.map((h, i) => (
           <div key={i} className={`w-8 h-8 rounded-full flex items-center justify-center font-black text-xs border border-white/10 ${
@@ -64,13 +77,11 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
         ))}
       </div>
 
-      {/* Wheel Area */}
       <div className="relative flex-1 flex flex-col items-center justify-center">
         <div className={`w-48 h-48 md:w-64 md:h-64 rounded-full border-8 border-amber-900 bg-slate-900 flex items-center justify-center shadow-[0_0_50px_rgba(245,158,11,0.2)] ${isSpinning ? 'animate-spin' : ''}`}>
            <div className="text-4xl md:text-6xl font-black text-white italic">
              {result !== null ? result : '?'}
            </div>
-           {/* Decorative spokes */}
            <div className="absolute inset-0 rounded-full border border-white/5 opacity-50"></div>
         </div>
         {result !== null && (
@@ -82,7 +93,6 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
         )}
       </div>
 
-      {/* Betting Board */}
       <div className="w-full max-w-3xl bg-slate-900/60 p-8 rounded-[3rem] border border-white/5 shadow-2xl space-y-8">
         <div className="grid grid-cols-3 gap-4">
           <button 

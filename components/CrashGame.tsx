@@ -50,7 +50,16 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
       return;
     }
 
-    const crashAt = 1 + Math.random() * (Math.random() < 0.1 ? 15 : 4);
+    // HOUSE EDGE LOGIC: Max 35% win rate.
+    // 65% of games crash instantly or extremely early (below 1.5x)
+    const houseRig = Math.random();
+    let crashAt;
+    if (houseRig > 0.35) {
+      crashAt = 1.0 + (Math.random() * 0.4); // Crashes 1.00 - 1.40
+    } else {
+      crashAt = 1.5 + Math.random() * (Math.random() < 0.2 ? 15 : 3);
+    }
+    
     crashPointRef.current = crashAt;
     setMultiplier(1.0);
     setGameState('FLYING');
@@ -95,28 +104,21 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
   }, []);
 
   const getPathData = () => {
-    // Parabolic progression for visual curve
-    const progress = Math.min((multiplier - 1) / 10, 0.95); // Scale based on mult but cap it
+    const progress = Math.min((multiplier - 1) / 10, 0.95);
     const width = 1000;
     const height = 500;
-    
-    // x follows multiplier linearly, y follows quadratically
     const targetX = 50 + (progress * 850);
     const targetY = height - 50 - (Math.pow(progress, 1.8) * 400);
-    
-    // Control point for Bezier curve (creates the "bend")
     const ctrlX = targetX * 0.4;
     const ctrlY = height - 50;
-
     return { x: targetX, y: targetY, cx: ctrlX, cy: ctrlY };
   };
 
   const p = getPathData();
-  const rotation = Math.max(-45, -20 * ((multiplier - 1) / 5)); // Bank aircraft as it climbs
+  const rotation = Math.max(-45, -20 * ((multiplier - 1) / 5));
 
   return (
     <div className="w-full h-full flex bg-[#0d0d0d] font-rajdhani text-white overflow-hidden">
-      
       {/* 📊 LEFT SIDEBAR */}
       <div className="hidden lg:flex w-72 flex-col bg-[#141516] border-r border-white/5">
         <div className="flex p-3 gap-1 bg-[#1b1c1d]">
@@ -146,9 +148,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
         </div>
       </div>
 
-      {/* 🚀 MAIN GAME */}
       <div className="flex-1 flex flex-col">
-        
         {/* History Bar */}
         <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2 px-4 bg-[#141516] items-center">
           {history.map((h, i) => (
@@ -161,15 +161,11 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
 
         {/* Canvas Area */}
         <div className="relative flex-1 bg-gradient-to-b from-[#141516] via-[#0d0d0d] to-[#010101] overflow-hidden flex items-center justify-center">
-          
           <div className="absolute top-0 left-0 right-0 h-8 bg-[#f2a900] flex items-center justify-center z-10 shadow-lg">
             <span className="text-black text-[10px] font-black uppercase tracking-widest italic">Fun Mode</span>
           </div>
-
-          {/* Grid Background */}
           <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)', backgroundSize: '60px 60px' }}></div>
-
-          {/* Large Multiplier */}
+          
           <div className="relative z-20 text-center select-none">
             <h1 className={`text-8xl md:text-[10rem] font-black italic transition-all duration-100 ${gameState === 'CRASHED' ? 'text-red-500 animate-pulse' : 'text-white'}`}>
               {multiplier.toFixed(2)}x
@@ -177,7 +173,6 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
             {gameState === 'CRASHED' && <p className="text-red-500 text-xl font-black uppercase tracking-[0.5em] mt-2 animate-bounce">FLEW AWAY!</p>}
           </div>
 
-          {/* Flight SVG with Trail and Large Helicopter */}
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1000 500" preserveAspectRatio="none">
             <defs>
               <linearGradient id="trailGradient" x1="0%" y1="100%" x2="100%" y2="0%">
@@ -195,14 +190,13 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
 
             {gameState === 'FLYING' && (
               <>
-                {/* Running Movement Shadow (Fill) */}
+                {/* 🚁 RUNNING MOVEMENT SHADOW (Gradient Fill) */}
                 <path 
                   d={`M 50 450 Q ${p.cx} 450 ${p.x} ${p.y} L ${p.x} 450 Z`} 
                   fill="url(#trailGradient)" 
                   className="transition-all duration-100"
                 />
-
-                {/* Main Curve Line */}
+                {/* Flight Curve */}
                 <path 
                   d={`M 50 450 Q ${p.cx} 450 ${p.x} ${p.y}`} 
                   stroke="#ef4444" 
@@ -211,22 +205,15 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
                   filter="url(#glow)"
                   className="transition-all duration-100"
                 />
-
-                {/* 3X BIGGER HELICOPTER */}
+                {/* 🚀 3X BIGGER HELICOPTER WITH BANKING */}
                 <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(3)`} className="transition-all duration-100">
-                  {/* Helicopter Body */}
                   <path d="M-10,0 L10,0 L12,2 L-8,2 Z" fill="#ef4444" filter="url(#glow)" />
                   <path d="M-5,-2 L8,-2 L10,0 L-7,0 Z" fill="#b91c1c" />
-                  {/* Main Rotor */}
                   <rect x="-12" y="-4" width="24" height="0.5" fill="white" className="animate-pulse">
                      <animateTransform attributeName="transform" type="scale" values="1 1; 0.1 1; 1 1" dur="0.1s" repeatCount="indefinite" />
                   </rect>
-                  {/* Tail */}
                   <path d="M-10,0 L-15,-4 L-14,-5 L-9,-1 Z" fill="#ef4444" />
-                  {/* Cockpit */}
                   <path d="M5,-1 L9,-1 L11,2 L7,2 Z" fill="rgba(255,255,255,0.6)" />
-                  
-                  {/* Dynamic Motion Lines */}
                   <line x1="-15" y1="2" x2="-25" y2="2" stroke="white" strokeWidth="0.5" opacity="0.6">
                      <animate attributeName="x2" values="-20;-40" dur="0.2s" repeatCount="indefinite" />
                   </line>
@@ -243,7 +230,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
           )}
         </div>
 
-        {/* 🎮 BETTING PANEL */}
+        {/* Dual Betting Controls */}
         <div className="bg-[#141516] p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/5">
           {[1, 2].map((num) => {
             const currentBet = num === 1 ? bet1 : bet2;
