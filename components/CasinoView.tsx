@@ -3,6 +3,8 @@ import React, { useState } from 'react';
 import { CASINO_CATEGORIES } from '../constants.tsx';
 import { Game, User, Language } from '../types.ts';
 import { translations } from '../translations.ts';
+import CrashGame from './CrashGame.tsx';
+import RouletteGame from './RouletteGame.tsx';
 
 const PLAYABLE_GAMES: Game[] = [
   { id: 'g1', name: 'Sweet Bonanza', provider: 'Pragmatic', category: 'Slots', img: 'https://images.unsplash.com/photo-1596838132731-3301c3fd4317?auto=format&fit=crop&q=80&w=600', demoUrl: 'https://demogamesfree.pragmaticplay.net/gs2c/openGame.do?gameSymbol=vs20sweetbonanza&lang=en&cur=USD&sysName=WEB&jurisdiction=99' },
@@ -26,36 +28,47 @@ const CasinoView: React.FC<CasinoViewProps> = ({ user, onBet, lang }) => {
   const [activeCategory, setActiveCategory] = useState('Slots');
   const [selectedGame, setSelectedGame] = useState<Game | null>(null);
 
+  const renderInternalGame = () => {
+    if (!selectedGame) return null;
+    if (selectedGame.demoUrl === 'INTERNAL_AVIATOR') {
+      return <CrashGame user={user} onBet={onBet} />;
+    }
+    if (selectedGame.demoUrl === 'INTERNAL_ROULETTE') {
+      return <RouletteGame user={user} onBet={onBet} />;
+    }
+    return null;
+  };
+
   return (
     <div className="space-y-12 animate-in fade-in duration-700 h-full pb-20 font-rajdhani">
       
       {/* 🚀 Game Portal Modal (Full Screen) */}
       {selectedGame && (
-        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/98 backdrop-blur-3xl p-0 md:p-10">
-          <div className="relative w-full h-full bg-[#020617] md:rounded-[4rem] border border-white/10 overflow-hidden flex flex-col">
+        <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/98 backdrop-blur-3xl p-0 md:p-6 lg:p-10">
+          <div className="relative w-full h-full bg-[#020617] md:rounded-[4rem] border border-white/10 overflow-hidden flex flex-col shadow-2xl">
              <div className="p-6 border-b border-white/5 flex justify-between items-center bg-slate-950/50">
                 <div className="flex items-center space-x-4">
-                  <span className="text-[10px] text-purple-500 font-black uppercase tracking-widest">Now Playing:</span>
+                  <span className="hidden md:block text-[10px] text-purple-500 font-black uppercase tracking-widest">Now Playing:</span>
                   <h3 className="text-xl font-black text-white uppercase italic">{selectedGame.name}</h3>
                 </div>
-                <button 
-                  onClick={() => setSelectedGame(null)} 
-                  className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center hover:scale-110 transition-transform shadow-2xl"
-                >
-                  <i className="fa-solid fa-xmark text-xl"></i>
-                </button>
+                <div className="flex items-center space-x-6">
+                  <div className="hidden lg:flex flex-col items-end">
+                    <span className="text-[9px] text-slate-500 font-black uppercase">Wallet Balance</span>
+                    <span className="text-amber-500 font-black italic leading-none">${user.balanceUSDT.toFixed(2)}</span>
+                  </div>
+                  <button 
+                    onClick={() => setSelectedGame(null)} 
+                    className="w-12 h-12 rounded-2xl bg-red-600/20 text-red-500 border border-red-500/30 flex items-center justify-center hover:bg-red-600 hover:text-white transition-all shadow-2xl"
+                  >
+                    <i className="fa-solid fa-xmark text-xl"></i>
+                  </button>
+                </div>
              </div>
-             <div className="flex-1">
+             <div className="flex-1 overflow-hidden">
                 {selectedGame.demoUrl.startsWith('https') ? (
                   <iframe src={selectedGame.demoUrl} className="w-full h-full border-none" allow="autoplay; encrypted-media; fullscreen" title={selectedGame.name} />
                 ) : (
-                  <div className="w-full h-full flex flex-col items-center justify-center text-center p-10 bg-slate-950/20">
-                    <div className="w-32 h-32 bg-purple-600/10 rounded-full flex items-center justify-center text-5xl text-purple-500 mb-8 animate-pulse">
-                      <i className="fa-solid fa-terminal"></i>
-                    </div>
-                    <h2 className="text-4xl font-black text-white uppercase italic mb-4">Internal Simulator Active</h2>
-                    <p className="text-slate-500 max-w-lg uppercase font-black text-xs tracking-widest">This game is running on the 20XBet core engine logic. All wins are settled in USDT.</p>
-                  </div>
+                  renderInternalGame()
                 )}
              </div>
           </div>
