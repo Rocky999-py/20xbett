@@ -106,9 +106,14 @@ const CasinoView: React.FC<CasinoViewProps> = ({ user, onBet, lang }) => {
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-8">
         {PLAYABLE_GAMES.filter(g => activeCategory === 'Slots' || g.category === activeCategory).map(game => (
           <div key={game.id} onClick={() => setSelectedGame(game)} className="group cursor-pointer">
-            <div className="relative aspect-[3/4] rounded-[3rem] overflow-hidden border border-white/5 transition-all duration-500 group-hover:border-purple-500 group-hover:-translate-y-2 shadow-2xl">
+            <div className={`relative aspect-[3/4] rounded-[3rem] overflow-hidden border border-white/5 transition-all duration-500 group-hover:border-purple-500 group-hover:-translate-y-2 shadow-2xl ${game.demoUrl === 'INTERNAL_AVIATOR' ? 'bg-[#1b1a4a]' : ''}`}>
                <img src={game.img} className="w-full h-full object-cover opacity-80 group-hover:opacity-100 transition-all duration-700 group-hover:scale-110" alt={game.name} />
                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent"></div>
+               {game.demoUrl === 'INTERNAL_AVIATOR' && (
+                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none group-hover:scale-110 transition-transform">
+                    <p className="text-3xl font-black italic text-white/20 uppercase tracking-tighter" style={{ fontFamily: 'Montserrat, sans-serif' }}>Aviator</p>
+                 </div>
+               )}
                <div className="absolute top-6 right-6 opacity-0 group-hover:opacity-100 transition-opacity">
                   <div className="w-10 h-10 bg-purple-600 rounded-full flex items-center justify-center text-white shadow-xl">
                     <i className="fa-solid fa-play ml-1"></i>

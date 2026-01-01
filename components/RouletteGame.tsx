@@ -24,6 +24,8 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
       return;
     }
 
+    // Deduct stake immediately
+    onBet(betAmount, false);
     setIsSpinning(true);
     setResult(null);
 
@@ -33,13 +35,12 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
       let num;
       
       if (rigRoll > 0.35) {
-        // Force a loss. 
-        // We look for a number that DOES NOT match selectedType.
+        // Force a loss (65%)
         if (selectedType === 'RED') num = 1; // Black
         else if (selectedType === 'BLACK') num = 2; // Red
         else num = 1; // Not Zero
       } else {
-        // Normal roll (Chance to win)
+        // Normal roll (35%)
         num = Math.floor(Math.random() * 37);
       }
       
@@ -61,7 +62,10 @@ const RouletteGame: React.FC<RouletteGameProps> = ({ user, onBet }) => {
         if (selectedType === 'BLACK') isWin = true;
       }
 
-      onBet(betAmount, isWin, multiplier);
+      // If win, add payout (Profit + Stake)
+      if (isWin) {
+        onBet(betAmount, true, multiplier);
+      }
     }, 2000);
   };
 

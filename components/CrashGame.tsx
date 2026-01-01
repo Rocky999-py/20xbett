@@ -26,8 +26,8 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
   const [gameState, setGameState] = useState<'IDLE' | 'FLYING' | 'CRASHED'>('IDLE');
   const [history, setHistory] = useState<number[]>([1.61, 4.32, 19.66, 2.73, 15.44, 1.66, 2.37, 1.42, 1.89, 1.00]);
   
-  const [bet1, setBet1] = useState<ActiveBet>({ amount: 1.0, cashedOut: false, multiplier: 0, placed: false });
-  const [bet2, setBet2] = useState<ActiveBet>({ amount: 1.0, cashedOut: false, multiplier: 0, placed: false });
+  const [bet1, setBet1] = useState<ActiveBet>({ amount: 10.0, cashedOut: false, multiplier: 0, placed: false });
+  const [bet2, setBet2] = useState<ActiveBet>({ amount: 10.0, cashedOut: false, multiplier: 0, placed: false });
   
   const timerRef = useRef<number | null>(null);
   const crashPointRef = useRef<number>(2.0);
@@ -44,29 +44,26 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
 
   const startGame = () => {
     if (gameState === 'FLYING') return;
-    const totalRequired = (bet1.placed ? bet1.amount : 0) + (bet2.placed ? bet2.amount : 0);
-    if (totalRequired > user.balanceUSDT) {
-      alert("Insufficient Balance!");
-      return;
-    }
 
-    // HOUSE EDGE LOGIC: Max 35% win rate.
-    // 65% of games crash instantly or extremely early (below 1.5x)
     const houseRig = Math.random();
     let crashAt;
     if (houseRig > 0.35) {
-      crashAt = 1.0 + (Math.random() * 0.4); // Crashes 1.00 - 1.40
+      crashAt = 1.0 + (Math.random() * 0.45); 
     } else {
-      crashAt = 1.5 + Math.random() * (Math.random() < 0.2 ? 15 : 3);
+      crashAt = 1.5 + Math.random() * (Math.random() < 0.2 ? 20 : 5);
     }
     
     crashPointRef.current = crashAt;
     setMultiplier(1.0);
     setGameState('FLYING');
 
+    if (bet1.placed) onBet(bet1.amount, false);
+    if (bet2.placed) onBet(bet2.amount, false);
+
     timerRef.current = window.setInterval(() => {
       setMultiplier(prev => {
-        const next = prev + 0.006 * Math.pow(prev, 1.15);
+        const growthRate = 0.012 * Math.pow(prev, 1.25); 
+        const next = prev + growthRate;
         if (next >= crashPointRef.current) {
           clearInterval(timerRef.current!);
           handleCrash();
@@ -74,28 +71,28 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
         }
         return Number(next.toFixed(2));
       });
-    }, 50);
+    }, 40); 
   };
 
   const handleCrash = () => {
     setGameState('CRASHED');
     setHistory(h => [Number(crashPointRef.current.toFixed(2)), ...h].slice(0, 15));
-    if (bet1.placed && !bet1.cashedOut) onBet(bet1.amount, false);
-    if (bet2.placed && !bet2.cashedOut) onBet(bet2.amount, false);
-
+    
     setTimeout(() => {
       setGameState('IDLE');
       setBet1(prev => ({ ...prev, placed: false, cashedOut: false }));
       setBet2(prev => ({ ...prev, placed: false, cashedOut: false }));
-    }, 3000);
+    }, 3500);
   };
 
   const handleCashOut = (betNum: 1 | 2) => {
     const bet = betNum === 1 ? bet1 : bet2;
     if (gameState !== 'FLYING' || bet.cashedOut || !bet.placed) return;
+    
     const winMultiplier = multiplier;
     if (betNum === 1) setBet1(prev => ({ ...prev, cashedOut: true, multiplier: winMultiplier }));
     else setBet2(prev => ({ ...prev, cashedOut: true, multiplier: winMultiplier }));
+    
     onBet(bet.amount, true, winMultiplier);
   };
 
@@ -104,44 +101,55 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
   }, []);
 
   const getPathData = () => {
-    const progress = Math.min((multiplier - 1) / 10, 0.95);
-    const width = 1000;
+    const progress = Math.min((multiplier - 1) / 15, 0.95);
     const height = 500;
     const targetX = 50 + (progress * 850);
-    const targetY = height - 50 - (Math.pow(progress, 1.8) * 400);
-    const ctrlX = targetX * 0.4;
+    const targetY = height - 50 - (Math.pow(progress, 2.2) * 380);
+    const ctrlX = targetX * 0.5;
     const ctrlY = height - 50;
     return { x: targetX, y: targetY, cx: ctrlX, cy: ctrlY };
   };
 
   const p = getPathData();
-  const rotation = Math.max(-45, -20 * ((multiplier - 1) / 5));
+  const rotation = Math.max(-45, -30 * ((multiplier - 1) / 5));
 
   return (
     <div className="w-full h-full flex bg-[#0d0d0d] font-rajdhani text-white overflow-hidden">
-      {/* 📊 LEFT SIDEBAR */}
-      <div className="hidden lg:flex w-72 flex-col bg-[#141516] border-r border-white/5">
+      <style>{`
+        @keyframes sunburst-rotate {
+          from { transform: rotate(0deg); }
+          to { transform: rotate(360deg); }
+        }
+        .sunburst-container {
+          animation: sunburst-rotate 60s linear infinite;
+        }
+        .aviator-font {
+          font-family: 'Montserrat', sans-serif;
+          font-style: italic;
+        }
+      `}</style>
+      
+      <div className="hidden lg:flex w-72 flex-col bg-[#141516] border-r border-white/5 shadow-2xl">
         <div className="flex p-3 gap-1 bg-[#1b1c1d]">
-          <button className="flex-1 bg-[#2c2d2f] py-1 rounded-md text-[9px] font-black uppercase">All Bets</button>
-          <button className="flex-1 text-slate-500 py-1 text-[9px] font-black uppercase">My Bets</button>
-          <button className="flex-1 text-slate-500 py-1 text-[9px] font-black uppercase">Top</button>
+          <button className="flex-1 bg-[#2c2d2f] py-1 rounded-md text-[9px] font-black uppercase tracking-widest">All Bets</button>
+          <button className="flex-1 text-slate-500 py-1 text-[9px] font-black uppercase tracking-widest">My Bets</button>
         </div>
         <div className="flex justify-between px-4 py-2 text-[8px] text-slate-500 font-black uppercase border-b border-white/5">
-          <span>User</span>
-          <span>Bet, USD</span>
-          <span>Cash out, USD</span>
+          <span>User Node</span>
+          <span>Stake</span>
+          <span>Payout</span>
         </div>
         <div className="flex-1 overflow-y-auto no-scrollbar bg-[#111213]">
           {mockBets.map((mb, i) => (
-            <div key={i} className={`flex items-center justify-between px-3 py-1.5 border-b border-white/5 ${mb.win ? 'bg-green-500/5' : ''}`}>
+            <div key={i} className={`flex items-center justify-between px-3 py-2 border-b border-white/5 ${mb.win ? 'bg-green-500/5' : ''}`}>
               <div className="flex items-center gap-2">
-                <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[8px]">👤</div>
+                <div className="w-5 h-5 rounded-full bg-slate-800 flex items-center justify-center text-[7px] font-black">{mb.user[0].toUpperCase()}</div>
                 <span className="text-[9px] text-slate-400 font-bold">{mb.user}</span>
               </div>
-              <span className="text-[9px] font-black text-slate-300">{mb.amount.toFixed(2)}</span>
+              <span className="text-[9px] font-black text-slate-300">${mb.amount.toFixed(0)}</span>
               <div className="flex items-center gap-2 min-w-[70px] justify-end">
                 {mb.multiplier && <span className="text-[8px] font-black text-purple-400 bg-purple-400/10 px-1 rounded">{mb.multiplier.toFixed(2)}x</span>}
-                <span className="text-[9px] font-black text-green-500">{mb.win ? mb.win.toFixed(2) : ''}</span>
+                <span className="text-[9px] font-black text-green-500">{mb.win ? `$${mb.win.toFixed(0)}` : ''}</span>
               </div>
             </div>
           ))}
@@ -149,8 +157,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
       </div>
 
       <div className="flex-1 flex flex-col">
-        {/* History Bar */}
-        <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2 px-4 bg-[#141516] items-center">
+        <div className="flex gap-1.5 overflow-x-auto no-scrollbar py-2 px-4 bg-[#141516] items-center border-b border-white/5">
           {history.map((h, i) => (
             <span key={i} className={`px-2 py-0.5 rounded-full text-[9px] font-black whitespace-nowrap ${h > 10 ? 'bg-[#913ef8]' : h > 2 ? 'bg-[#4361ee]' : 'bg-[#1b1c1d] border border-white/10'} text-white`}>
               {h.toFixed(2)}x
@@ -159,151 +166,188 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
           <button className="ml-auto text-slate-500 text-xs"><i className="fa-solid fa-clock-rotate-left"></i></button>
         </div>
 
-        {/* Canvas Area */}
-        <div className="relative flex-1 bg-gradient-to-b from-[#141516] via-[#0d0d0d] to-[#010101] overflow-hidden flex items-center justify-center">
-          <div className="absolute top-0 left-0 right-0 h-8 bg-[#f2a900] flex items-center justify-center z-10 shadow-lg">
-            <span className="text-black text-[10px] font-black uppercase tracking-widest italic">Fun Mode</span>
-          </div>
-          <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'linear-gradient(#333 1px, transparent 1px), linear-gradient(90deg, #333 1px, transparent 1px)', backgroundSize: '60px 60px' }}></div>
+        <div className="relative flex-1 bg-gradient-to-br from-[#1b1a4a] via-[#0b0a2a] to-[#010101] overflow-hidden flex items-center justify-center">
           
-          <div className="relative z-20 text-center select-none">
-            <h1 className={`text-8xl md:text-[10rem] font-black italic transition-all duration-100 ${gameState === 'CRASHED' ? 'text-red-500 animate-pulse' : 'text-white'}`}>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none opacity-30">
+            <div className="sunburst-container w-[200%] h-[200%] absolute flex items-center justify-center">
+              {[...Array(24)].map((_, i) => (
+                <div 
+                  key={i} 
+                  className="absolute w-1 h-[2000px] bg-gradient-to-t from-transparent via-blue-500/20 to-transparent" 
+                  style={{ transform: `rotate(${i * 15}deg)` }}
+                />
+              ))}
+            </div>
+          </div>
+
+          <div className="absolute top-0 left-0 right-0 h-8 bg-[#e91e63] flex items-center justify-center z-10 shadow-lg border-b border-black/20">
+            <span className="text-white text-[10px] font-black uppercase tracking-[0.3em] italic">Aviator • Provably Fair</span>
+          </div>
+          
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-full h-40 opacity-40 blur-3xl bg-blue-400/10 rounded-full"></div>
+            <div className="absolute top-20 right-20 w-32 h-32 opacity-20 blur-2xl bg-white/10 rounded-full animate-pulse"></div>
+            <div className="absolute top-40 left-20 w-48 h-48 opacity-20 blur-3xl bg-white/5 rounded-full animate-pulse"></div>
+          </div>
+          
+          <div className="relative z-20 text-center select-none scale-110">
+            <h1 className={`text-9xl md:text-[13rem] font-black italic tracking-tighter transition-all duration-100 ${gameState === 'CRASHED' ? 'text-red-600 animate-pulse' : 'text-white'}`}>
               {multiplier.toFixed(2)}x
             </h1>
-            {gameState === 'CRASHED' && <p className="text-red-500 text-xl font-black uppercase tracking-[0.5em] mt-2 animate-bounce">FLEW AWAY!</p>}
+            {gameState === 'FLYING' && (
+              <div className="mt-[-2rem] opacity-30 animate-in fade-in duration-1000">
+                <p className="aviator-font text-5xl font-black text-white italic tracking-tighter uppercase">Aviator</p>
+              </div>
+            )}
+            {gameState === 'CRASHED' && (
+              <p className="text-red-500 text-3xl font-black uppercase tracking-[0.8em] mt-2 animate-bounce drop-shadow-[0_0_20px_rgba(239,68,68,0.7)]">FLEW AWAY!</p>
+            )}
           </div>
 
           <svg className="absolute inset-0 w-full h-full pointer-events-none" viewBox="0 0 1000 500" preserveAspectRatio="none">
             <defs>
               <linearGradient id="trailGradient" x1="0%" y1="100%" x2="100%" y2="0%">
-                <stop offset="0%" stopColor="rgba(239, 68, 68, 0)" />
-                <stop offset="100%" stopColor="rgba(239, 68, 68, 0.4)" />
+                <stop offset="0%" stopColor="rgba(233, 30, 99, 0)" />
+                <stop offset="100%" stopColor="rgba(233, 30, 99, 0.4)" />
               </linearGradient>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
+              {/* 🎨 RED DARK GRADIENT FOR HELICOPTER BODY */}
+              <linearGradient id="redDarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#b91c1c" /> {/* Deep Red / Maroon */}
+                <stop offset="100%" stopColor="#450a0a" /> {/* Very Dark Red / Blackish Red */}
+              </linearGradient>
+              <filter id="planeGlow">
+                <feGaussianBlur stdDeviation="6" result="blur"/>
                 <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
+                  <feMergeNode in="blur"/>
+                  <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
             </defs>
 
             {gameState === 'FLYING' && (
               <>
-                {/* 🚁 RUNNING MOVEMENT SHADOW (Gradient Fill) */}
                 <path 
                   d={`M 50 450 Q ${p.cx} 450 ${p.x} ${p.y} L ${p.x} 450 Z`} 
                   fill="url(#trailGradient)" 
                   className="transition-all duration-100"
                 />
-                {/* Flight Curve */}
                 <path 
                   d={`M 50 450 Q ${p.cx} 450 ${p.x} ${p.y}`} 
-                  stroke="#ef4444" 
-                  strokeWidth="5" 
+                  stroke="#e91e63" 
+                  strokeWidth="8" 
                   fill="none" 
-                  filter="url(#glow)"
-                  className="transition-all duration-100"
+                  filter="url(#planeGlow)"
+                  className="transition-all duration-100 opacity-80"
                 />
-                {/* 🚀 12X SCALE HELICOPTER (4x larger than previous 3x) */}
-                <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(12)`} className="transition-all duration-100">
-                  {/* Helicopter Body Main */}
-                  <path d="M-10,0 L10,0 L12,2 L-8,2 Z" fill="#ef4444" filter="url(#glow)" />
-                  {/* Bottom Accents */}
-                  <path d="M-5,-2 L8,-2 L10,0 L-7,0 Z" fill="#b91c1c" />
-                  {/* Main Rotor High-Speed Animation */}
-                  <rect x="-12" y="-4" width="24" height="0.5" fill="rgba(255,255,255,0.8)" className="animate-pulse">
-                     <animateTransform attributeName="transform" type="scale" values="1 1; 0.05 1; 1 1" dur="0.05s" repeatCount="indefinite" />
-                  </rect>
-                  {/* Tail Structure */}
-                  <path d="M-10,0 L-18,-5 L-17,-6 L-9,-1 Z" fill="#ef4444" />
-                  {/* Small Tail Rotor */}
-                  <circle cx="-18" cy="-5" r="1.5" fill="rgba(255,255,255,0.3)" stroke="white" strokeWidth="0.2">
-                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.1s" repeatCount="indefinite" />
-                  </circle>
-                  {/* Cockpit Window */}
-                  <path d="M6,-1.5 L10,-1.5 L11.5,1.5 L7.5,1.5 Z" fill="rgba(135, 206, 235, 0.7)" stroke="white" strokeWidth="0.1" />
-                  {/* Landing Skids */}
-                  <path d="M-6,2 L8,2 L9,3 L-7,3 Z" fill="#333" />
-                  <line x1="-4" y1="2" x2="-4" y2="3" stroke="#333" strokeWidth="0.5" />
-                  <line x1="6" y1="2" x2="6" y2="3" stroke="#333" strokeWidth="0.5" />
+                
+                {/* ✈️ PIXEL PERFECT AVIATOR PROPELLER PLANE (16X SCALE) */}
+                <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(16)`} className="transition-all duration-100">
+                  {/* Plane Body - Using Red Dark Gradient */}
+                  <path d="M-8,0 L8,0 L10,1 L8,2 L-8,2 Z" fill="url(#redDarkGradient)" filter="url(#planeGlow)" stroke="#e91e63" strokeWidth="0.1" />
+                  <path d="M-4,-2 L4,-2 L6,0 L-6,0 Z" fill="#7f1d1d" />
                   
-                  {/* Dynamic Air Trailing Lines (Particles) */}
-                  <line x1="-15" y1="1" x2="-25" y2="1" stroke="white" strokeWidth="0.2" opacity="0.4">
-                     <animate attributeName="x2" values="-20;-50" dur="0.15s" repeatCount="indefinite" />
-                  </line>
-                  <line x1="-15" y1="-2" x2="-25" y2="-2" stroke="white" strokeWidth="0.1" opacity="0.3">
-                     <animate attributeName="x2" values="-18;-40" dur="0.2s" repeatCount="indefinite" />
-                  </line>
+                  {/* Tail */}
+                  <path d="M-8,0 L-11,-3 L-10,-4 L-7,-1 Z" fill="url(#redDarkGradient)" stroke="#e91e63" strokeWidth="0.1" />
+                  <path d="M-8,2 L-11,5 L-10,6 L-7,3 Z" fill="#450a0a" />
+                  
+                  {/* Propeller Hub */}
+                  <circle cx="10" cy="1" r="1" fill="#ef4444" />
+                  
+                  {/* Rotating Propeller Blur */}
+                  <ellipse cx="11.5" cy="1" rx="0.5" ry="5" fill="rgba(255,255,255,0.6)">
+                    <animate attributeName="ry" values="5;0.5;5" dur="0.04s" repeatCount="indefinite" />
+                  </ellipse>
+                  
+                  {/* Cockpit */}
+                  <path d="M2,-1 L6,-1 L7.5,1 L3,1 Z" fill="rgba(135, 206, 235, 0.6)" stroke="white" strokeWidth="0.1" />
+                  
+                  {/* Wings */}
+                  <path d="M-2,1 L-3,-4 L1,-4 L2,1 Z" fill="url(#redDarkGradient)" stroke="#e91e63" strokeWidth="0.1" />
+                  <path d="M-2,1 L-3,6 L1,6 L2,1 Z" fill="#450a0a" />
+                  
+                  {/* Engine Exhaust Sparkles */}
+                  <g opacity="0.8">
+                    <circle r="0.4" fill="#ff4d4d">
+                      <animate attributeName="cx" values="-10;-30" dur="0.08s" repeatCount="indefinite" />
+                      <animate attributeName="cy" values="1;2" dur="0.08s" repeatCount="indefinite" />
+                      <animate attributeName="opacity" values="1;0" dur="0.08s" repeatCount="indefinite" />
+                    </circle>
+                  </g>
                 </g>
               </>
             )}
           </svg>
           
           {gameState === 'IDLE' && (
-            <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center z-30">
-               <div className="w-20 h-20 border-4 border-white/10 border-t-red-500 rounded-full animate-spin mb-4"></div>
-               <p className="font-black uppercase tracking-[0.3em] text-white animate-pulse">Waiting for next round...</p>
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center z-30">
+               <div className="w-24 h-24 border-8 border-white/5 border-t-red-500 rounded-full animate-spin mb-6"></div>
+               <p className="aviator-font font-black uppercase tracking-[0.5em] text-white text-3xl animate-pulse italic">AVIATOR</p>
+               <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Connecting to Secure Node...</p>
             </div>
           )}
         </div>
 
-        {/* Dual Betting Controls */}
-        <div className="bg-[#141516] p-4 grid grid-cols-1 md:grid-cols-2 gap-4 border-t border-white/5">
+        <div className="bg-[#141516] p-6 grid grid-cols-1 md:grid-cols-2 gap-6 border-t border-white/10 shadow-inner-deep">
           {[1, 2].map((num) => {
             const currentBet = num === 1 ? bet1 : bet2;
             const setBet = num === 1 ? setBet1 : setBet2;
 
             return (
-              <div key={num} className="bg-[#1b1c1d] rounded-xl p-4 flex gap-4 items-center border border-white/5 relative">
-                <div className="flex flex-col gap-2 flex-1">
-                   <div className="flex gap-1">
-                      <button className="px-3 py-1 bg-[#2c2d2f] text-[9px] font-black uppercase rounded">Bet</button>
-                      <button className="px-3 py-1 text-slate-500 text-[9px] font-black uppercase">Auto</button>
+              <div key={num} className="bg-[#1b1c1d] rounded-3xl p-6 flex gap-6 items-center border border-white/5 relative group hover:border-[#e91e63]/30 transition-all">
+                <div className="flex flex-col gap-3 flex-1">
+                   <div className="flex gap-2">
+                      <button className="px-4 py-1.5 bg-[#2c2d2f] text-[10px] font-black uppercase rounded-lg border border-white/5">Bet</button>
+                      <button className="px-4 py-1.5 text-slate-500 text-[10px] font-black uppercase">Auto</button>
                    </div>
-                   <div className="flex items-center bg-[#0d0d0d] rounded-lg border border-white/10 px-3 py-2">
-                      <button onClick={() => setBet(p => ({...p, amount: Math.max(1, p.amount - 1)}))} className="text-slate-500">➖</button>
+                   <div className="flex items-center bg-[#0d0d0d] rounded-2xl border border-white/10 px-4 py-3">
+                      <button onClick={() => setBet(p => ({...p, amount: Math.max(1, p.amount - 10)}))} className="text-slate-500 hover:text-white transition-colors">➖</button>
                       <input 
                         type="number" 
                         value={currentBet.amount} 
                         onChange={(e) => setBet(p => ({...p, amount: Number(e.target.value)}))}
-                        className="w-full bg-transparent text-center font-black text-xl outline-none" 
+                        className="w-full bg-transparent text-center font-black text-2xl outline-none text-white italic" 
                       />
-                      <button onClick={() => setBet(p => ({...p, amount: p.amount + 1}))} className="text-slate-500">➕</button>
+                      <button onClick={() => setBet(p => ({...p, amount: p.amount + 10}))} className="text-slate-500 hover:text-white transition-colors">➕</button>
                    </div>
-                   <div className="grid grid-cols-4 gap-1">
-                      {[1, 2, 5, 10].map(amt => (
-                        <button key={amt} onClick={() => setBet(p => ({...p, amount: amt}))} className="bg-[#2c2d2f] py-1 rounded text-[9px] font-bold hover:bg-slate-700 transition-colors">{amt}</button>
+                   <div className="grid grid-cols-4 gap-2">
+                      {[10, 50, 100, 500].map(amt => (
+                        <button key={amt} onClick={() => setBet(p => ({...p, amount: amt}))} className="bg-[#2c2d2f] py-1.5 rounded-lg text-[10px] font-black text-slate-300 hover:bg-slate-700 transition-colors border border-white/5">{amt}</button>
                       ))}
                    </div>
                 </div>
 
-                <div className="w-40 h-24">
+                <div className="w-48 h-28">
                   {gameState === 'FLYING' && currentBet.placed && !currentBet.cashedOut ? (
                     <button 
                       onClick={() => handleCashOut(num as 1 | 2)}
-                      className="w-full h-full bg-gradient-to-b from-[#f2a900] to-[#d99700] rounded-xl flex flex-col items-center justify-center shadow-lg active:scale-95 transition-all"
+                      className="w-full h-full bg-gradient-to-b from-[#ff8a00] to-[#e52e71] rounded-3xl flex flex-col items-center justify-center shadow-[0_0_30px_rgba(229,46,113,0.3)] active:scale-95 transition-all border border-pink-400/20"
                     >
-                      <span className="text-[10px] font-black uppercase tracking-widest text-black/80">Cash Out</span>
-                      <span className="text-xl font-black italic text-black">{(currentBet.amount * multiplier).toFixed(2)} USD</span>
+                      <span className="text-[11px] font-black uppercase tracking-widest text-white/70 mb-1">Cash Out</span>
+                      <span className="text-3xl font-black italic text-white leading-none">${(currentBet.amount * multiplier).toFixed(2)}</span>
                     </button>
                   ) : currentBet.cashedOut ? (
-                    <div className="w-full h-full bg-[#28a745]/10 border border-[#28a745]/30 rounded-xl flex flex-col items-center justify-center">
-                       <span className="text-[10px] font-black text-[#28a745] uppercase">Success</span>
-                       <span className="text-xl font-black italic">{currentBet.multiplier.toFixed(2)}x</span>
+                    <div className="w-full h-full bg-[#28a745]/10 border border-[#28a745]/30 rounded-3xl flex flex-col items-center justify-center animate-in zoom-in duration-300">
+                       <span className="text-[10px] font-black text-[#28a745] uppercase tracking-widest mb-1">Win</span>
+                       <span className="text-3xl font-black italic text-[#28a745]">{currentBet.multiplier.toFixed(2)}x</span>
                     </div>
                   ) : (
                     <button 
                       onClick={() => {
+                        if (user.balanceUSDT < currentBet.amount && !currentBet.placed) {
+                            alert("Insufficient balance.");
+                            return;
+                        }
                         setBet(p => ({...p, placed: !p.placed}));
-                        if (gameState === 'IDLE' && !currentBet.placed) startGame();
+                        if (gameState === 'IDLE' && !currentBet.placed) {
+                            setTimeout(startGame, 100);
+                        }
                       }}
-                      className={`w-full h-full rounded-xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-xl ${
-                        currentBet.placed ? 'bg-red-600/20 border border-red-500/40 text-red-500' : 'bg-[#28a745] hover:bg-[#218838] text-white'
+                      className={`w-full h-full rounded-3xl flex flex-col items-center justify-center transition-all active:scale-95 shadow-xl border-2 ${
+                        currentBet.placed ? 'bg-red-600/20 border-red-500/40 text-red-500' : 'bg-[#28a745] hover:bg-[#218838] border-[#218838] text-white'
                       }`}
                     >
-                      <span className="text-2xl font-black italic tracking-tighter uppercase">{currentBet.placed ? 'CANCEL' : 'BET'}</span>
-                      <span className="text-[10px] font-black opacity-80">{currentBet.amount.toFixed(2)} USD</span>
+                      <span className="text-3xl font-black italic tracking-tighter uppercase leading-none">{currentBet.placed ? 'CANCEL' : 'BET'}</span>
+                      <span className="text-[10px] font-black uppercase tracking-widest opacity-80 mt-1">${currentBet.amount.toFixed(0)} USDT</span>
                     </button>
                   )}
                 </div>

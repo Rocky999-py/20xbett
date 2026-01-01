@@ -24,7 +24,7 @@ const INITIAL_USER: User = {
   uplineId: 'NEX-0001-A',
   joinDate: new Date().toLocaleDateString(),
   currentLevel: 1,
-  balanceUSDT: 100.00,
+  balanceUSDT: 1000.00,
   balanceBNB: 0.15,
   isMLM: false
 };
@@ -81,12 +81,24 @@ const App: React.FC = () => {
     setIsAuthMode(false);
   };
 
-  const handleBet = async (amount: number, isWin: boolean, multiplier: number = 2) => {
-    // Correct ledger logic: 
-    // If win: User gets Profit = (amount * multiplier) - amount
-    // If loss: User loses amount
-    const profit = (amount * multiplier) - amount;
-    const netChange = isWin ? profit : -amount;
+  /**
+   * Professional Betting Logic:
+   * 1. If isWin is FALSE: It's a stake deduction (Bet placed).
+   * 2. If isWin is TRUE: It's a payout (Profit + Stake returned).
+   */
+  const handleBet = async (amount: number, isWin: boolean, multiplier: number = 0) => {
+    let netChange = 0;
+    let txType: Transaction['type'] = 'BET_LOSS';
+
+    if (!isWin) {
+      // User placed a bet: Deduct stake
+      netChange = -amount;
+      txType = 'BET_LOSS';
+    } else {
+      // User won: Add payout (Stake * Multiplier)
+      netChange = amount * multiplier;
+      txType = 'BET_WIN';
+    }
     
     setUser(prev => ({ 
       ...prev, 
@@ -95,7 +107,7 @@ const App: React.FC = () => {
     
     const newTx: Transaction = {
       id: `TX-${Math.random().toString(36).substr(2, 5).toUpperCase()}`,
-      type: isWin ? 'BET_WIN' : 'BET_LOSS',
+      type: txType,
       amount: netChange,
       status: 'COMPLETED',
       date: new Date().toISOString().split('T')[0]
