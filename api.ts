@@ -1,32 +1,19 @@
 
 import { createClient } from '@supabase/supabase-js';
-import { User, UserCredentials } from './types.ts';
+import { User, UserCredentials, Transaction } from './types.ts';
 
-const getEnv = (key: string): string | undefined => {
-  try {
-    if (typeof process !== 'undefined' && process.env) {
-      return (process.env as any)[key];
-    }
-    return (window as any)._env_?.[key];
-  } catch {
-    return undefined;
-  }
-};
+// PRODUCTION ENDPOINT
+const SUPABASE_URL = 'https://epodytzfgvsedplebtju.supabase.co';
 
-const SUPABASE_URL = getEnv('SUPABASE_URL');
-const SUPABASE_ANON_KEY = getEnv('SUPABASE_ANON_KEY');
+/** 
+ * SECURITY NOTE: 
+ * Use the 'anon' / 'public' key from your Supabase Dashboard Settings -> API.
+ * DO NOT use the 'service_role' key in the frontend code.
+ * Our SQL setup already allows the Public key to perform CRUD via RLS Policies.
+ */
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVwb2R5dHpmZ3ZzZWRwbGVidGp1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjcyNzEzODcsImV4cCI6MjA4Mjg0NzM4N30.iuqSa0vUcvEBsXJhi7MvORneFAtPOOZ2OpwH7SOESJw'; 
 
-const isCloudEnabled = !!SUPABASE_URL && SUPABASE_URL !== 'https://your-project-id.supabase.co';
-const supabase = isCloudEnabled ? createClient(SUPABASE_URL!, SUPABASE_ANON_KEY!) : null;
-
-const getLocalDB = () => {
-  const db = localStorage.getItem('nexus_local_ledger');
-  return db ? JSON.parse(db) : { profiles: [] };
-};
-
-const saveLocalDB = (db: any) => {
-  localStorage.setItem('nexus_local_ledger', JSON.stringify(db));
-};
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const NexusAPI = {
   register: async (credentials: UserCredentials & { password?: string }) => {
@@ -42,72 +29,72 @@ export const NexusAPI = {
       uplineId: isMLM ? (referralId || 'NEX-0001-A') : 'GENERAL',
       joinDate: new Date().toLocaleDateString(),
       currentLevel: 1,
-      balanceUSDT: isMLM ? 10.00 : 100.00, // Player gets more starting balance
+      balanceUSDT: isMLM ? 10.00 : 100.00,
       balanceBNB: 0.15,
       isMLM: isMLM,
       password: password || 'nopass'
     };
 
-    if (supabase) {
-      const { error } = await supabase.from('profiles').insert([newUser]);
-      if (error) throw new Error(`CLOUD_DATABASE_ERROR: ${error.message}`);
-      return { success: true, user: newUser };
-    } else {
-      const db = getLocalDB();
-      if (db.profiles.find((p: any) => p.email === email)) {
-        throw new Error('LEDGER_ERROR: Email node already indexed locally.');
-      }
-      db.profiles.push(newUser);
-      saveLocalDB(db);
-      return { success: true, user: newUser };
-    }
+    const { error } = await supabase.from('profiles').insert([newUser]);
+    if (error) throw error;
+    return { success: true, user: newUser };
   },
 
   login: async (credentials: { email: string; password?: string }) => {
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('email', credentials.email)
-        .eq('password', credentials.password)
-        .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('email', credentials.email)
+      .eq('password', credentials.password)
+      .single();
 
-      if (error || !data) throw new Error('AUTH_FAILED: Invalid cloud signature.');
-      return { success: true, user: data as User };
-    } else {
-      const db = getLocalDB();
-      const user = db.profiles.find((p: any) => p.email === credentials.email && p.password === credentials.password);
-      if (!user) throw new Error('AUTH_FAILED: Invalid local node signature.');
-      return { success: true, user };
-    }
+    if (error || !data) throw new Error('AUTH_FAILED: Invalid node signature.');
+    return { success: true, user: data as User };
   },
 
   updateProfile: async (userId: string, updates: Partial<User>) => {
-    if (supabase) {
-      const { data, error } = await supabase
-        .from('profiles')
-        .update(updates)
-        .eq('id', userId)
-        .select()
-        .single();
+    const { data, error } = await supabase
+      .from('profiles')
+      .update(updates)
+      .eq('id', userId)
+      .select()
+      .single();
 
-      if (error) throw new Error(`SYNC_FAILED: ${error.message}`);
-      return { success: true, user: data as User };
-    } else {
-      const db = getLocalDB();
-      const index = db.profiles.findIndex((p: any) => p.id === userId);
-      if (index === -1) throw new Error('SYNC_FAILED: Local node not found.');
-      db.profiles[index] = { ...db.profiles[index], ...updates };
-      saveLocalDB(db);
-      return { success: true, user: db.profiles[index] };
-    }
+    if (error) throw error;
+    return { success: true, user: data as User };
   },
 
-  getGlobalStats: async () => {
-    if (supabase) {
-      const { count } = await supabase.from('profiles').select('*', { count: 'exact', head: true });
-      return { totalWebsiteUsers: count || 12450 };
-    }
-    return { totalWebsiteUsers: 12450 + getLocalDB().profiles.length };
+  // --- ADMIN CRUD METHODS ---
+
+  getAdminData: async () => {
+    const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
+    const { data: txs } = await supabase.from('transactions').select('*').order('created_at', { ascending: false });
+    
+    return {
+      users: profiles || [],
+      transactions: txs || [],
+      stats: {
+        totalUsers: (profiles?.length || 0),
+        totalVolume: (txs?.reduce((acc: number, curr: any) => acc + Math.abs(curr.amount), 0) || 0)
+      }
+    };
+  },
+
+  adminDeleteProfile: async (userId: string) => {
+    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    if (error) throw error;
+    return { success: true };
+  },
+
+  adminDeleteTransaction: async (txId: string) => {
+    const { error } = await supabase.from('transactions').delete().eq('id', txId);
+    if (error) throw error;
+    return { success: true };
+  },
+
+  adminUpsertProfile: async (user: User) => {
+    const { error } = await supabase.from('profiles').upsert([user]);
+    if (error) throw error;
+    return { success: true };
   }
 };

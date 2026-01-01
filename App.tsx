@@ -13,6 +13,7 @@ import Logo from './components/Logo.tsx';
 import RegistrationGuide from './components/RegistrationGuide.tsx';
 import AuthView from './components/AuthView.tsx';
 import IncomeSummaryView from './components/IncomeSummaryView.tsx';
+import AdminPortalView from './components/AdminPortalView.tsx'; // Import Admin Portal
 import { NexusAPI } from './api.ts';
 import { translations } from './translations.ts';
 
@@ -54,8 +55,16 @@ const App: React.FC = () => {
   const [isInitializing, setIsInitializing] = useState(true);
   const [liveFeed, setLiveFeed] = useState<LiveEvent[]>([]);
   const [transactions, setTransactions] = useState<Transaction[]>([]);
+  const [isAdminOpen, setIsAdminOpen] = useState(false); // Admin Modal State
 
   useEffect(() => {
+    const handleOpenAdmin = () => {
+      console.log("App Received Admin Trigger Event");
+      setIsAdminOpen(true);
+    };
+    
+    window.addEventListener('OPEN_ADMIN_PORTAL', handleOpenAdmin);
+    
     const initNexus = async () => {
       try {
         const session = localStorage.getItem('nexus_active_session');
@@ -72,6 +81,8 @@ const App: React.FC = () => {
       }
     };
     initNexus();
+    
+    return () => window.removeEventListener('OPEN_ADMIN_PORTAL', handleOpenAdmin);
   }, []);
 
   const handleLoginSuccess = (userData: User) => {
@@ -81,28 +92,30 @@ const App: React.FC = () => {
     setIsAuthMode(false);
   };
 
-  /**
-   * Professional Betting Logic:
-   * 1. If isWin is FALSE: It's a stake deduction (Bet placed).
-   * 2. If isWin is TRUE: It's a payout (Profit + Stake returned).
-   */
   const handleBet = async (amount: number, isWin: boolean, multiplier: number = 0) => {
     let netChange = 0;
     let txType: Transaction['type'] = 'BET_LOSS';
 
     if (!isWin) {
-      // User placed a bet: Deduct stake
       netChange = -amount;
       txType = 'BET_LOSS';
     } else {
-      // User won: Add payout (Stake * Multiplier)
       netChange = amount * multiplier;
       txType = 'BET_WIN';
     }
     
+    const newBalance = Number((user.balanceUSDT + netChange).toFixed(2));
+    
+    // Persist to Supabase if possible
+    try {
+      await NexusAPI.updateProfile(user.id, { balanceUSDT: newBalance });
+    } catch(err) {
+      console.warn("Could not sync balance to server, updating locally.");
+    }
+    
     setUser(prev => ({ 
       ...prev, 
-      balanceUSDT: Number((prev.balanceUSDT + netChange).toFixed(2)) 
+      balanceUSDT: newBalance 
     }));
     
     const newTx: Transaction = {
@@ -116,7 +129,13 @@ const App: React.FC = () => {
   };
 
   const handleUpgrade = async (levelId: number, price: number) => {
-    setUser(prev => ({ ...prev, currentLevel: levelId, balanceUSDT: prev.balanceUSDT - price }));
+    const newBalance = user.balanceUSDT - price;
+    try {
+      await NexusAPI.updateProfile(user.id, { currentLevel: levelId, balanceUSDT: newBalance });
+    } catch(err) {
+      console.warn("Update profile failed, local only.");
+    }
+    setUser(prev => ({ ...prev, currentLevel: levelId, balanceUSDT: newBalance }));
   };
 
   if (isInitializing) {
@@ -164,6 +183,7 @@ const App: React.FC = () => {
 
   return (
     <div className="flex flex-col min-h-screen bg-[#0b1223] text-slate-200">
+      {isAdminOpen && <AdminPortalView onClose={() => setIsAdminOpen(false)} />}
       {!isAuthMode && isWalletConnected && (
         <Header user={user} isConnected={isWalletConnected} onConnect={() => setIsAuthMode(true)} onToggleMenu={() => {}} lang={lang} setLang={setLang} setView={setCurrentView} activeView={currentView} />
       )}
