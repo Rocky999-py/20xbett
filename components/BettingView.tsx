@@ -4,6 +4,7 @@ import { User, Match, Language } from '../types';
 import { SPORTS } from '../constants';
 import { translations } from '../translations';
 import { GoogleGenAI } from "@google/genai";
+import { SportsAPI } from '../api.ts';
 
 interface PlacedBet {
   id: string;
@@ -17,38 +18,17 @@ interface PlacedBet {
   sport: string;
 }
 
-// Extensive mapping for flags using FlagCDN
 const getTeamIcon = (team: string): string => {
   const normalized = team.toLowerCase();
   const mapping: Record<string, string> = {
-    'india': 'in',
-    'pakistan': 'pk',
-    'australia': 'au',
-    'england': 'gb',
-    'south africa': 'za',
-    'new zealand': 'nz',
-    'west indies': 'vg',
-    'sri lanka': 'lk',
-    'bangladesh': 'bd',
-    'afghanistan': 'af',
-    'ireland': 'ie',
-    'zimbabwe': 'zw',
-    'netherlands': 'nl',
-    'scotland': 'gb-sct',
-    'usa': 'us',
-    'nepal': 'np',
-    'oman': 'om',
-    'namibia': 'na',
-    'uae': 'ae',
-    'canada': 'ca',
-    'man city': 'gb-eng',
-    'liverpool': 'gb-eng',
-    'real madrid': 'es',
-    'barcelona': 'es',
-    'france': 'fr',
-    'argentina': 'ar',
-    'brazil': 'br',
-    'germany': 'de'
+    'india': 'in', 'pakistan': 'pk', 'australia': 'au', 'england': 'gb',
+    'south africa': 'za', 'new zealand': 'nz', 'west indies': 'vg',
+    'sri lanka': 'lk', 'bangladesh': 'bd', 'afghanistan': 'af',
+    'ireland': 'ie', 'zimbabwe': 'zw', 'netherlands': 'nl',
+    'scotland': 'gb-sct', 'usa': 'us', 'nepal': 'np', 'oman': 'om',
+    'namibia': 'na', 'uae': 'ae', 'canada': 'ca', 'man city': 'gb-eng',
+    'liverpool': 'gb-eng', 'real madrid': 'es', 'barcelona': 'es',
+    'france': 'fr', 'argentina': 'ar', 'brazil': 'br', 'germany': 'de'
   };
 
   for (const [key, code] of Object.entries(mapping)) {
@@ -77,11 +57,24 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
   const [placedBets, setPlacedBets] = useState<PlacedBet[]>([]);
   const [betStatus, setBetStatus] = useState<'IDLE' | 'PROCESSING' | 'SETTLED'>('IDLE');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [dataSource, setDataSource] = useState<'MOCK' | 'AI' | 'REAL_TIME'>('MOCK');
 
-  // Gemini AI Fetch Logic
   const syncRealTimeData = useCallback(async () => {
     setIsSyncing(true);
     try {
+      // 1. Try Real-Time External API first
+      const externalData = await SportsAPI.fetchLiveCricket();
+      if (externalData && externalData.length > 0) {
+        setMatches(prev => {
+          const nonCricket = prev.filter(m => m.sport !== 'Cricket');
+          return [...externalData, ...nonCricket];
+        });
+        setDataSource('REAL_TIME');
+        setIsSyncing(false);
+        return;
+      }
+
+      // 2. Fallback to Gemini AI if API Key is missing or failed
       const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
       const prompt = `
         List current live, recent (finished today), and upcoming international or major league cricket matches (IPL, BBL, PSL, etc.).
@@ -116,6 +109,7 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
           const nonCricket = prev.filter(m => m.sport !== 'Cricket');
           return [...newMatches, ...nonCricket];
         });
+        setDataSource('AI');
       }
     } catch (error) {
       console.error("Failed to sync live data:", error);
@@ -124,16 +118,15 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
     }
   }, []);
 
-  // Professional Odds Fluctuation simulation
   useEffect(() => {
     const interval = setInterval(() => {
       setMatches(prev => prev.map(m => {
         if (!m.isLive) return m;
-        const shouldLock = Math.random() > 0.98;
-        const change = (Math.random() - 0.5) * 0.1;
+        const shouldLock = Math.random() > 0.99; // Slightly rarer locking
+        const change = (Math.random() - 0.5) * 0.08;
         return {
           ...m, 
-          marketLocked: shouldLock ? true : (m.marketLocked && Math.random() > 0.5 ? true : false),
+          marketLocked: shouldLock ? true : (m.marketLocked && Math.random() > 0.4 ? true : false),
           odds: { 
             ...m.odds, 
             over: Number(Math.max(1.01, m.odds.over + change).toFixed(2)), 
@@ -141,12 +134,12 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
           }
         };
       }));
-    }, 4000);
+    }, 5000);
     return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {
-    syncRealTimeData(); // Initial sync on mount
+    syncRealTimeData();
   }, [syncRealTimeData]);
 
   const handlePlaceBet = () => {
@@ -176,7 +169,6 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
     
     setPlacedBets(prev => [newPlacedBet, ...prev]);
 
-    // Rigging logic: 35% win rate
     setTimeout(() => {
       const isWin = Math.random() <= 0.35;
       setPlacedBets(prev => prev.map(b => b.id === betId ? { ...b, status: isWin ? 'WIN' : 'LOSS' } : b));
@@ -217,7 +209,17 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
           </div>
         </div>
 
-        {/* Sync Button */}
+        {/* Sync Info */}
+        <div className="p-4 bg-slate-900/50 rounded-2xl border border-white/5 text-center">
+           <p className="text-[8px] text-slate-500 font-black uppercase mb-2">Node Connection Source</p>
+           <div className={`text-[10px] font-black px-3 py-1.5 rounded-lg border uppercase italic ${
+             dataSource === 'REAL_TIME' ? 'bg-green-600/10 border-green-500/30 text-green-400' : 
+             dataSource === 'AI' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'
+           }`}>
+             {dataSource === 'REAL_TIME' ? 'Direct API Link' : dataSource === 'AI' ? 'Gemini AI Sync' : 'Mock Data'}
+           </div>
+        </div>
+
         <button 
           onClick={syncRealTimeData}
           disabled={isSyncing}
@@ -232,10 +234,12 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
       <div className="flex-1 flex flex-col gap-6">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-900 rounded-[2.5rem] p-8 flex items-center justify-between shadow-2xl relative overflow-hidden">
           <div className="relative z-10">
-            <h2 className="text-4xl font-black italic uppercase leading-none mb-2">CRICKET RADAR</h2>
+            <h2 className="text-4xl font-black italic uppercase leading-none mb-2">{activeSport.toUpperCase()} RADAR</h2>
             <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-80 italic">Real-Time Match Nodes Established</p>
           </div>
-          <div className="absolute right-10 top-1/2 -translate-y-1/2 opacity-20 text-8xl">🏏</div>
+          <div className="absolute right-10 top-1/2 -translate-y-1/2 opacity-20 text-8xl">
+            {SPORTS.find(s => s.name === activeSport)?.icon || '🏏'}
+          </div>
         </div>
 
         <div className="bg-[#141d33] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
@@ -363,17 +367,12 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
                     />
                     <button onClick={() => setBetAmount(betAmount + 10)} className="w-10 h-10 text-slate-500">➕</button>
                   </div>
-                  <div className="grid grid-cols-4 gap-1">
-                    {[10, 50, 100, 500].map(amt => (
-                      <button key={amt} onClick={() => setBetAmount(amt)} className="bg-slate-900 py-1 rounded text-[8px] font-bold text-slate-500 border border-white/5 hover:border-blue-500/50">{amt}</button>
-                    ))}
-                  </div>
                 </div>
 
                 <div className="p-4 bg-blue-600/5 rounded-2xl border border-blue-600/20 space-y-2">
                   <div className="flex justify-between text-[10px] font-black uppercase text-slate-500">
                     <span>Possible Win</span>
-                    <span className="text-white italic">${(betAmount * (selectedBet.side === 'W1' ? matches.find(m => m.id === selectedBet.matchId)!.odds.over : matches.find(m => m.id === selectedBet.matchId)!.odds.under)).toFixed(2)}</span>
+                    <span className="text-white italic">${(betAmount * (selectedBet.side === 'W1' ? (matches.find(m => m.id === selectedBet.matchId)?.odds.over || 1) : (matches.find(m => m.id === selectedBet.matchId)?.odds.under || 1))).toFixed(2)}</span>
                   </div>
                 </div>
 
