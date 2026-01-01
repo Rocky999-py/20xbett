@@ -1,8 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { User, Match, Language } from '../types';
 import { SPORTS } from '../constants';
 import { translations } from '../translations';
+import { GoogleGenAI } from "@google/genai";
 
 interface PlacedBet {
   id: string;
@@ -16,31 +17,49 @@ interface PlacedBet {
   sport: string;
 }
 
+// Extensive mapping for flags using FlagCDN
 const getTeamIcon = (team: string): string => {
-  const icons: Record<string, string> = {
-    'India': 'https://flagcdn.com/w160/in.png',
-    'Pakistan': 'https://flagcdn.com/w160/pk.png',
-    'Man City': 'https://img.icons8.com/color/96/manchester-city.png',
-    'Liverpool': 'https://img.icons8.com/color/96/liverpool-fc.png',
-    'Alcaraz': 'https://flagcdn.com/w160/es.png',
-    'Djokovic': 'https://flagcdn.com/w160/rs.png',
-    'Australia': 'https://flagcdn.com/w160/au.png',
-    'England': 'https://flagcdn.com/w160/gb.png',
-    'Argentina': 'https://flagcdn.com/w160/ar.png',
-    'France': 'https://flagcdn.com/w160/fr.png',
-    'Brazil': 'https://flagcdn.com/w160/br.png',
-    'Germany': 'https://flagcdn.com/w160/de.png'
+  const normalized = team.toLowerCase();
+  const mapping: Record<string, string> = {
+    'india': 'in',
+    'pakistan': 'pk',
+    'australia': 'au',
+    'england': 'gb',
+    'south africa': 'za',
+    'new zealand': 'nz',
+    'west indies': 'vg',
+    'sri lanka': 'lk',
+    'bangladesh': 'bd',
+    'afghanistan': 'af',
+    'ireland': 'ie',
+    'zimbabwe': 'zw',
+    'netherlands': 'nl',
+    'scotland': 'gb-sct',
+    'usa': 'us',
+    'nepal': 'np',
+    'oman': 'om',
+    'namibia': 'na',
+    'uae': 'ae',
+    'canada': 'ca',
+    'man city': 'gb-eng',
+    'liverpool': 'gb-eng',
+    'real madrid': 'es',
+    'barcelona': 'es',
+    'france': 'fr',
+    'argentina': 'ar',
+    'brazil': 'br',
+    'germany': 'de'
   };
-  return icons[team] || 'https://img.icons8.com/color/96/trophy.png';
+
+  for (const [key, code] of Object.entries(mapping)) {
+    if (normalized.includes(key)) return `https://flagcdn.com/w160/${code}.png`;
+  }
+  return 'https://img.icons8.com/color/96/trophy.png';
 };
 
-const MOCK_MATCHES: Match[] = [
+const DEFAULT_MATCHES: Match[] = [
   { id: 'm1', sport: 'Cricket', teamA: 'India', teamB: 'Australia', startTime: 'LIVE', isLive: true, odds: { over: 1.85, under: 1.95, line: 1 }, marketLocked: false },
   { id: 'm2', sport: 'Football', teamA: 'Man City', teamB: 'Liverpool', startTime: 'LIVE', isLive: true, odds: { over: 2.10, under: 1.70, line: 1 }, marketLocked: false },
-  { id: 'm3', sport: 'Tennis', teamA: 'Alcaraz', teamB: 'Djokovic', startTime: 'Starts in 4h', isLive: false, odds: { over: 1.90, under: 1.90, line: 1 }, marketLocked: false },
-  { id: 'm4', sport: 'Cricket', teamA: 'Pakistan', teamB: 'England', startTime: 'Starts in 12h', isLive: false, odds: { over: 1.80, under: 2.00, line: 1 }, marketLocked: false },
-  { id: 'm5', sport: 'Football', teamA: 'Argentina', teamB: 'France', startTime: 'Tomorrow', isLive: false, odds: { over: 1.95, under: 1.95, line: 1 }, marketLocked: false },
-  { id: 'm6', sport: 'Football', teamA: 'Brazil', teamB: 'Germany', startTime: 'In 3 Days', isLive: false, odds: { over: 2.05, under: 1.85, line: 1 }, marketLocked: false },
 ];
 
 interface BettingViewProps {
@@ -52,32 +71,83 @@ interface BettingViewProps {
 const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
   const t = (key: string) => translations[lang][key] || key;
   const [activeSport, setActiveSport] = useState('Cricket');
-  const [matches, setMatches] = useState<Match[]>(MOCK_MATCHES);
+  const [matches, setMatches] = useState<Match[]>(DEFAULT_MATCHES);
   const [betAmount, setBetAmount] = useState(10);
   const [selectedBet, setSelectedBet] = useState<{matchId: string, side: 'W1' | 'W2'} | null>(null);
   const [placedBets, setPlacedBets] = useState<PlacedBet[]>([]);
   const [betStatus, setBetStatus] = useState<'IDLE' | 'PROCESSING' | 'SETTLED'>('IDLE');
+  const [isSyncing, setIsSyncing] = useState(false);
+
+  // Gemini AI Fetch Logic
+  const syncRealTimeData = useCallback(async () => {
+    setIsSyncing(true);
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const prompt = `
+        List current live, recent (finished today), and upcoming international or major league cricket matches (IPL, BBL, PSL, etc.).
+        Include the following JSON structure for each match:
+        {
+          "id": "unique_string",
+          "sport": "Cricket",
+          "teamA": "Team Name",
+          "teamB": "Team Name",
+          "startTime": "Status or Start Time (e.g., 8:00 PM or LIVE 20.4 Ov)",
+          "isLive": boolean,
+          "odds": { "over": number_multiplier, "under": number_multiplier, "line": 1 }
+        }
+        Provide at least 6 matches. Return ONLY the raw JSON array.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json"
+        },
+      });
+
+      const text = response.text || "[]";
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      const newMatches: Match[] = JSON.parse(cleanJson);
+      
+      if (newMatches && Array.isArray(newMatches)) {
+        setMatches(prev => {
+          const nonCricket = prev.filter(m => m.sport !== 'Cricket');
+          return [...newMatches, ...nonCricket];
+        });
+      }
+    } catch (error) {
+      console.error("Failed to sync live data:", error);
+    } finally {
+      setIsSyncing(false);
+    }
+  }, []);
 
   // Professional Odds Fluctuation simulation
   useEffect(() => {
     const interval = setInterval(() => {
       setMatches(prev => prev.map(m => {
         if (!m.isLive) return m;
-        const shouldLock = Math.random() > 0.98; // Suspend market
+        const shouldLock = Math.random() > 0.98;
         const change = (Math.random() - 0.5) * 0.1;
         return {
           ...m, 
           marketLocked: shouldLock ? true : (m.marketLocked && Math.random() > 0.5 ? true : false),
           odds: { 
             ...m.odds, 
-            over: Number((m.odds.over + change).toFixed(2)), 
-            under: Number((m.odds.under - change).toFixed(2)) 
+            over: Number(Math.max(1.01, m.odds.over + change).toFixed(2)), 
+            under: Number(Math.max(1.01, m.odds.under - change).toFixed(2)) 
           }
         };
       }));
     }, 4000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    syncRealTimeData(); // Initial sync on mount
+  }, [syncRealTimeData]);
 
   const handlePlaceBet = () => {
     const match = matches.find(m => m.id === selectedBet?.matchId);
@@ -123,10 +193,11 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
     <div className="flex flex-col lg:flex-row gap-6 font-rajdhani text-white min-h-screen">
       
       {/* 🧭 LEFT SIDEBAR: Categories */}
-      <div className="w-full lg:w-64 flex flex-col gap-2 shrink-0">
+      <div className="w-full lg:w-64 flex flex-col gap-4 shrink-0">
         <div className="bg-[#141d33] rounded-2xl border border-white/5 overflow-hidden">
-          <div className="p-4 bg-blue-600/10 border-b border-white/5">
+          <div className="p-4 bg-blue-600/10 border-b border-white/5 flex justify-between items-center">
             <h4 className="text-xs font-black uppercase tracking-widest text-blue-400 italic">Top Sports</h4>
+            {isSyncing && <i className="fa-solid fa-circle-notch animate-spin text-blue-500"></i>}
           </div>
           <div className="p-2 space-y-1">
             {SPORTS.map(sport => (
@@ -141,21 +212,30 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
                   <span className="text-xl">{sport.icon}</span>
                   <span className="text-[11px] font-black uppercase tracking-wider">{sport.name}</span>
                 </div>
-                <span className="text-[9px] font-bold opacity-40">24</span>
               </button>
             ))}
           </div>
         </div>
+
+        {/* Sync Button */}
+        <button 
+          onClick={syncRealTimeData}
+          disabled={isSyncing}
+          className="w-full py-4 bg-slate-900 hover:bg-slate-800 rounded-2xl border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all shadow-xl active:scale-95"
+        >
+          <i className={`fa-solid fa-rotate ${isSyncing ? 'animate-spin' : ''}`}></i>
+          {isSyncing ? 'Syncing Radar...' : 'Update Live Data'}
+        </button>
       </div>
 
       {/* 🏟️ CENTER: Markets Area */}
       <div className="flex-1 flex flex-col gap-6">
         <div className="bg-gradient-to-r from-blue-600 to-indigo-900 rounded-[2.5rem] p-8 flex items-center justify-between shadow-2xl relative overflow-hidden">
           <div className="relative z-10">
-            <h2 className="text-4xl font-black italic uppercase leading-none mb-2">PRO SPORTSBOOK</h2>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-80 italic">BEP20 Settlement Active • 100% Reliable</p>
+            <h2 className="text-4xl font-black italic uppercase leading-none mb-2">CRICKET RADAR</h2>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] opacity-80 italic">Real-Time Match Nodes Established</p>
           </div>
-          <img src="https://img.icons8.com/color/144/trophy.png" className="w-24 h-24 opacity-30 absolute -right-4 -bottom-4 rotate-12" />
+          <div className="absolute right-10 top-1/2 -translate-y-1/2 opacity-20 text-8xl">🏏</div>
         </div>
 
         <div className="bg-[#141d33] rounded-3xl border border-white/5 overflow-hidden shadow-2xl">
@@ -168,57 +248,65 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
           </div>
           
           <div className="divide-y divide-white/5">
-            {matches.filter(m => m.sport === activeSport).map(match => (
-              <div key={match.id} className={`flex flex-col md:flex-row items-center p-4 gap-4 transition-colors relative group ${match.marketLocked ? 'opacity-50 grayscale bg-red-900/5' : 'hover:bg-white/5'}`}>
-                {match.marketLocked && (
-                  <div className="absolute inset-0 z-20 flex items-center justify-center">
-                    <span className="bg-red-600 text-[8px] font-black px-3 py-1 rounded-full uppercase italic animate-pulse shadow-lg">Market Locked</span>
-                  </div>
-                )}
-                
-                <div className="flex-1 flex items-center gap-6">
-                  <div className="text-center min-w-[50px]">
-                    <p className={`text-[8px] font-black uppercase ${match.isLive ? 'text-red-500' : 'text-slate-500'}`}>{match.isLive ? 'LIVE' : match.startTime}</p>
-                  </div>
-                  <div className="flex-1 flex items-center justify-between px-4">
-                    <div className="flex items-center gap-3">
-                      <img src={getTeamIcon(match.teamA)} className="w-8 h-8 object-contain" />
-                      <span className="text-[11px] font-black uppercase tracking-tighter w-24 truncate">{match.teamA}</span>
+            {matches.filter(m => m.sport === activeSport).length === 0 ? (
+               <div className="p-20 text-center opacity-30 flex flex-col items-center">
+                 <i className="fa-solid fa-satellite-dish text-6xl mb-4"></i>
+                 <p className="text-xs font-black uppercase tracking-widest">No active markets for {activeSport}</p>
+                 <button onClick={syncRealTimeData} className="mt-4 text-blue-500 font-bold hover:underline">Sync Now</button>
+               </div>
+            ) : (
+              matches.filter(m => m.sport === activeSport).map(match => (
+                <div key={match.id} className={`flex flex-col md:flex-row items-center p-4 gap-4 transition-colors relative group ${match.marketLocked ? 'opacity-50 grayscale bg-red-900/5' : 'hover:bg-white/5'}`}>
+                  {match.marketLocked && (
+                    <div className="absolute inset-0 z-20 flex items-center justify-center">
+                      <span className="bg-red-600 text-[8px] font-black px-3 py-1 rounded-full uppercase italic animate-pulse shadow-lg">Market Locked</span>
                     </div>
-                    <span className="text-slate-800 font-black italic mx-4 text-xs">VS</span>
-                    <div className="flex items-center gap-3 text-right">
-                      <span className="text-[11px] font-black uppercase tracking-tighter w-24 truncate">{match.teamB}</span>
-                      <img src={getTeamIcon(match.teamB)} className="w-8 h-8 object-contain" />
+                  )}
+                  
+                  <div className="flex-1 flex items-center gap-6">
+                    <div className="text-center min-w-[70px]">
+                      <p className={`text-[8px] font-black uppercase ${match.isLive ? 'text-red-500' : 'text-slate-500'}`}>{match.isLive ? 'LIVE' : match.startTime}</p>
+                    </div>
+                    <div className="flex-1 flex items-center justify-between px-4">
+                      <div className="flex items-center gap-3">
+                        <img src={getTeamIcon(match.teamA)} className="w-8 h-8 rounded-full object-cover bg-slate-800" />
+                        <span className="text-[11px] font-black uppercase tracking-tighter w-24 truncate">{match.teamA}</span>
+                      </div>
+                      <span className="text-slate-800 font-black italic mx-4 text-xs">VS</span>
+                      <div className="flex items-center gap-3 text-right">
+                        <span className="text-[11px] font-black uppercase tracking-tighter w-24 truncate">{match.teamB}</span>
+                        <img src={getTeamIcon(match.teamB)} className="w-8 h-8 rounded-full object-cover bg-slate-800" />
+                      </div>
                     </div>
                   </div>
-                </div>
 
-                <div className="flex gap-2">
-                  <button 
-                    disabled={match.marketLocked}
-                    onClick={() => setSelectedBet({matchId: match.id, side: 'W1'})}
-                    className={`w-20 h-12 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                      selectedBet?.matchId === match.id && selectedBet.side === 'W1'
-                      ? 'bg-blue-600 border-blue-400 shadow-lg' 
-                      : 'bg-[#0b1223] border-white/5 hover:border-blue-500/30'
-                    }`}
-                  >
-                    <span className="text-[14px] font-black italic">{match.odds.over}</span>
-                  </button>
-                  <button 
-                    disabled={match.marketLocked}
-                    onClick={() => setSelectedBet({matchId: match.id, side: 'W2'})}
-                    className={`w-20 h-12 rounded-xl border flex flex-col items-center justify-center transition-all ${
-                      selectedBet?.matchId === match.id && selectedBet.side === 'W2'
-                      ? 'bg-blue-600 border-blue-400 shadow-lg' 
-                      : 'bg-[#0b1223] border-white/5 hover:border-blue-500/30'
-                    }`}
-                  >
-                    <span className="text-[14px] font-black italic">{match.odds.under}</span>
-                  </button>
+                  <div className="flex gap-2">
+                    <button 
+                      disabled={match.marketLocked}
+                      onClick={() => setSelectedBet({matchId: match.id, side: 'W1'})}
+                      className={`w-20 h-12 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                        selectedBet?.matchId === match.id && selectedBet.side === 'W1'
+                        ? 'bg-blue-600 border-blue-400 shadow-lg' 
+                        : 'bg-[#0b1223] border-white/5 hover:border-blue-500/30'
+                      }`}
+                    >
+                      <span className="text-[14px] font-black italic">{match.odds.over}</span>
+                    </button>
+                    <button 
+                      disabled={match.marketLocked}
+                      onClick={() => setSelectedBet({matchId: match.id, side: 'W2'})}
+                      className={`w-20 h-12 rounded-xl border flex flex-col items-center justify-center transition-all ${
+                        selectedBet?.matchId === match.id && selectedBet.side === 'W2'
+                        ? 'bg-blue-600 border-blue-400 shadow-lg' 
+                        : 'bg-[#0b1223] border-white/5 hover:border-blue-500/30'
+                      }`}
+                    >
+                      <span className="text-[14px] font-black italic">{match.odds.under}</span>
+                    </button>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>
@@ -261,7 +349,10 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
                 </div>
 
                 <div className="space-y-2">
-                  <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest ml-2">Stake (USDT)</p>
+                  <div className="flex justify-between items-center ml-2">
+                    <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">Stake (USDT)</p>
+                    <span className="text-[8px] text-slate-600 font-black">Min: $10</span>
+                  </div>
                   <div className="flex items-center bg-[#0b1223] border border-white/5 rounded-2xl p-2">
                     <button onClick={() => setBetAmount(Math.max(1, betAmount - 10))} className="w-10 h-10 text-slate-500">➖</button>
                     <input 
@@ -271,6 +362,11 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
                       className="w-full bg-transparent text-center font-black text-xl text-white outline-none" 
                     />
                     <button onClick={() => setBetAmount(betAmount + 10)} className="w-10 h-10 text-slate-500">➕</button>
+                  </div>
+                  <div className="grid grid-cols-4 gap-1">
+                    {[10, 50, 100, 500].map(amt => (
+                      <button key={amt} onClick={() => setBetAmount(amt)} className="bg-slate-900 py-1 rounded text-[8px] font-bold text-slate-500 border border-white/5 hover:border-blue-500/50">{amt}</button>
+                    ))}
                   </div>
                 </div>
 

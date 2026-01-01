@@ -180,7 +180,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
                 <stop offset="100%" stopColor="rgba(239, 68, 68, 0.4)" />
               </linearGradient>
               <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="5" result="coloredBlur"/>
                 <feMerge>
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>
@@ -205,17 +205,35 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
                   filter="url(#glow)"
                   className="transition-all duration-100"
                 />
-                {/* 🚀 3X BIGGER HELICOPTER WITH BANKING */}
-                <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(3)`} className="transition-all duration-100">
+                {/* 🚀 12X SCALE HELICOPTER (4x larger than previous 3x) */}
+                <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(12)`} className="transition-all duration-100">
+                  {/* Helicopter Body Main */}
                   <path d="M-10,0 L10,0 L12,2 L-8,2 Z" fill="#ef4444" filter="url(#glow)" />
+                  {/* Bottom Accents */}
                   <path d="M-5,-2 L8,-2 L10,0 L-7,0 Z" fill="#b91c1c" />
-                  <rect x="-12" y="-4" width="24" height="0.5" fill="white" className="animate-pulse">
-                     <animateTransform attributeName="transform" type="scale" values="1 1; 0.1 1; 1 1" dur="0.1s" repeatCount="indefinite" />
+                  {/* Main Rotor High-Speed Animation */}
+                  <rect x="-12" y="-4" width="24" height="0.5" fill="rgba(255,255,255,0.8)" className="animate-pulse">
+                     <animateTransform attributeName="transform" type="scale" values="1 1; 0.05 1; 1 1" dur="0.05s" repeatCount="indefinite" />
                   </rect>
-                  <path d="M-10,0 L-15,-4 L-14,-5 L-9,-1 Z" fill="#ef4444" />
-                  <path d="M5,-1 L9,-1 L11,2 L7,2 Z" fill="rgba(255,255,255,0.6)" />
-                  <line x1="-15" y1="2" x2="-25" y2="2" stroke="white" strokeWidth="0.5" opacity="0.6">
-                     <animate attributeName="x2" values="-20;-40" dur="0.2s" repeatCount="indefinite" />
+                  {/* Tail Structure */}
+                  <path d="M-10,0 L-18,-5 L-17,-6 L-9,-1 Z" fill="#ef4444" />
+                  {/* Small Tail Rotor */}
+                  <circle cx="-18" cy="-5" r="1.5" fill="rgba(255,255,255,0.3)" stroke="white" strokeWidth="0.2">
+                    <animate attributeName="opacity" values="0.3;0.8;0.3" dur="0.1s" repeatCount="indefinite" />
+                  </circle>
+                  {/* Cockpit Window */}
+                  <path d="M6,-1.5 L10,-1.5 L11.5,1.5 L7.5,1.5 Z" fill="rgba(135, 206, 235, 0.7)" stroke="white" strokeWidth="0.1" />
+                  {/* Landing Skids */}
+                  <path d="M-6,2 L8,2 L9,3 L-7,3 Z" fill="#333" />
+                  <line x1="-4" y1="2" x2="-4" y2="3" stroke="#333" strokeWidth="0.5" />
+                  <line x1="6" y1="2" x2="6" y2="3" stroke="#333" strokeWidth="0.5" />
+                  
+                  {/* Dynamic Air Trailing Lines (Particles) */}
+                  <line x1="-15" y1="1" x2="-25" y2="1" stroke="white" strokeWidth="0.2" opacity="0.4">
+                     <animate attributeName="x2" values="-20;-50" dur="0.15s" repeatCount="indefinite" />
+                  </line>
+                  <line x1="-15" y1="-2" x2="-25" y2="-2" stroke="white" strokeWidth="0.1" opacity="0.3">
+                     <animate attributeName="x2" values="-18;-40" dur="0.2s" repeatCount="indefinite" />
                   </line>
                 </g>
               </>
