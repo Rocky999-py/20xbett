@@ -62,7 +62,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
 
     timerRef.current = window.setInterval(() => {
       setMultiplier(prev => {
-        const growthRate = 0.012 * Math.pow(prev, 1.25); 
+        const growthRate = 0.012 * Math.pow(prev, 1.15); 
         const next = prev + growthRate;
         if (next >= crashPointRef.current) {
           clearInterval(timerRef.current!);
@@ -214,11 +214,11 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
                 <stop offset="100%" stopColor="rgba(233, 30, 99, 0.4)" />
               </linearGradient>
               <linearGradient id="redDarkGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#b91c1c" />
-                <stop offset="100%" stopColor="#450a0a" />
+                <stop offset="0%" stopColor="#ff4b2b" />
+                <stop offset="100%" stopColor="#ff416c" />
               </linearGradient>
               <filter id="planeGlow">
-                <feGaussianBlur stdDeviation="6" result="blur"/>
+                <feGaussianBlur stdDeviation="3" result="blur"/>
                 <feMerge>
                   <feMergeNode in="blur"/>
                   <feMergeNode in="SourceGraphic"/>
@@ -236,29 +236,27 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
                 <path 
                   d={`M 50 450 Q ${p.cx} 450 ${p.x} ${p.y}`} 
                   stroke="#e91e63" 
-                  strokeWidth="8" 
+                  strokeWidth="6" 
                   fill="none" 
                   filter="url(#planeGlow)"
-                  className="transition-all duration-100 opacity-80"
+                  className="transition-all duration-100 opacity-90"
                 />
                 
-                <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(12 md:16)`} className="transition-all duration-100">
-                  <path d="M-8,0 L8,0 L10,1 L8,2 L-8,2 Z" fill="url(#redDarkGradient)" filter="url(#planeGlow)" stroke="#e91e63" strokeWidth="0.1" />
-                  <path d="M-4,-2 L4,-2 L6,0 L-6,0 Z" fill="#7f1d1d" />
-                  <circle cx="10" cy="1" r="1" fill="#ef4444" />
-                  <ellipse cx="11.5" cy="1" rx="0.5" ry="5" fill="rgba(255,255,255,0.6)">
-                    <animate attributeName="ry" values="5;0.5;5" dur="0.04s" repeatCount="indefinite" />
-                  </ellipse>
-                  <path d="M2,-1 L6,-1 L7.5,1 L3,1 Z" fill="rgba(135, 206, 235, 0.6)" stroke="white" strokeWidth="0.1" />
-                  <path d="M-2,1 L-3,-4 L1,-4 L2,1 Z" fill="url(#redDarkGradient)" stroke="#e91e63" strokeWidth="0.1" />
-                  <path d="M-2,1 L-3,6 L1,6 L2,1 Z" fill="#450a0a" />
-                  <g opacity="0.8">
-                    <circle r="0.4" fill="#ff4d4d">
-                      <animate attributeName="cx" values="-10;-30" dur="0.08s" repeatCount="indefinite" />
-                      <animate attributeName="cy" values="1;2" dur="0.08s" repeatCount="indefinite" />
-                      <animate attributeName="opacity" values="1;0" dur="0.08s" repeatCount="indefinite" />
-                    </circle>
-                  </g>
+                <g transform={`translate(${p.x}, ${p.y}) rotate(${rotation}) scale(10)`} className="transition-all duration-100">
+                  {/* Fuselage */}
+                  <path d="M-8,0 L6,0 L8,1 L6,2 L-8,2 Z" fill="url(#redDarkGradient)" filter="url(#planeGlow)" />
+                  {/* Cockpit */}
+                  <path d="M2,0 L5,0 L6,1 L5,2 L2,2 Z" fill="rgba(255,255,255,0.8)" />
+                  {/* Tail */}
+                  <path d="M-8,0 L-10,-4 L-7,-4 L-6,0 Z" fill="#ff4b2b" />
+                  {/* Main Wing */}
+                  <path d="M-2,1 L-4,6 L2,6 L1,1 Z" fill="#ff4b2b" stroke="white" strokeWidth="0.5" />
+                  <path d="M-2,1 L-4,-4 L2,-4 L1,1 Z" fill="#ff4b2b" stroke="white" strokeWidth="0.5" />
+                  {/* Propeller/Nose */}
+                  <circle cx="8" cy="1" r="1.2" fill="#fff" />
+                  <rect x="8.5" y="-3" width="0.5" height="8" fill="rgba(255,255,255,0.4)">
+                    <animateTransform attributeName="transform" type="rotate" from="0 8.75 1" to="360 8.75 1" dur="0.1s" repeatCount="indefinite" />
+                  </rect>
                 </g>
               </>
             )}
@@ -268,7 +266,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-md flex flex-col items-center justify-center z-30">
                <div className="w-16 h-16 md:w-24 md:h-24 border-8 border-white/5 border-t-red-500 rounded-full animate-spin mb-6"></div>
                <p className="aviator-font font-black uppercase tracking-[0.3em] md:tracking-[0.5em] text-white text-2xl md:text-3xl animate-pulse italic">AVIATOR</p>
-               <p className="text-[8px] md:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Connecting to Secure Node...</p>
+               <p className="text-[8px] md:text-[10px] text-slate-500 font-bold uppercase tracking-widest mt-2">Ready to Take Off</p>
             </div>
           )}
         </div>
@@ -324,6 +322,7 @@ const CrashGame: React.FC<CrashGameProps> = ({ user, onBet }) => {
                             alert("Insufficient balance.");
                             return;
                         }
+                        if (gameState === 'CRASHED') return;
                         setBet(p => ({...p, placed: !p.placed}));
                         if (gameState === 'IDLE' && !currentBet.placed) {
                             setTimeout(startGame, 100);
