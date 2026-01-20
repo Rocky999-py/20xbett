@@ -1,6 +1,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import { User, UserCredentials, Transaction, Match } from './types.ts';
+import { GoogleGenAI } from "@google/genai";
 
 // PRODUCTION ENDPOINT
 const SUPABASE_URL = 'https://epodytzfgvsedplebtju.supabase.co';
@@ -13,11 +14,20 @@ const CRICKET_API_KEY = '6093a752-a5b2-4495-9bd0-985f0dae9b07';
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // LOCAL FALLBACK STORE (Simulated Blockchain Storage)
-const getLocalUsers = (): User[] => JSON.parse(localStorage.getItem('nexus_simulated_users') || '[]');
+const getLocalUsers = (): User[] => {
+  try {
+    return JSON.parse(localStorage.getItem('nexus_simulated_users') || '[]');
+  } catch (e) {
+    return [];
+  }
+};
+
 const saveLocalUser = (user: User) => {
   const users = getLocalUsers();
-  users.push(user);
-  localStorage.setItem('nexus_simulated_users', JSON.stringify(users));
+  // Avoid duplicates
+  const filtered = users.filter(u => u.email !== user.email);
+  filtered.push(user);
+  localStorage.setItem('nexus_simulated_users', JSON.stringify(filtered));
 };
 
 export const NexusAPI = {
@@ -41,12 +51,13 @@ export const NexusAPI = {
     };
 
     try {
-      const { error } = await supabase.from('profiles').insert([newUser]);
+      // We wrap the entire call to ensure NO uncaught fetch errors leak
+      const request = supabase.from('profiles').insert([newUser]);
+      const { error } = await request;
       if (error) throw error;
       return { success: true, user: newUser };
     } catch (err) {
-      console.warn("NexusAPI: Cloud Sync Failed, falling back to Local Node Store.", err);
-      // Fallback for simulation/offline mode
+      console.warn("NexusAPI: Cloud Sync Failed during registration. Falling back to Local Node Store.", err);
       saveLocalUser(newUser);
       return { success: true, user: newUser, mode: 'LOCAL' };
     }
@@ -64,7 +75,7 @@ export const NexusAPI = {
       if (error || !data) throw new Error('AUTH_FAILED');
       return { success: true, user: data as User };
     } catch (err) {
-      console.warn("NexusAPI: Cloud Login Failed, searching Local Node Store.");
+      console.warn("NexusAPI: Cloud Login Failed. Searching Local Node Store.");
       const localUsers = getLocalUsers();
       const user = localUsers.find(u => u.email === credentials.email && u.password === credentials.password);
       
@@ -85,14 +96,12 @@ export const NexusAPI = {
       if (error) throw error;
       return { success: true, user: data as User };
     } catch (err) {
-      console.warn("NexusAPI: Could not update cloud profile. Updating local instance.");
       const users = getLocalUsers().map(u => u.id === userId ? { ...u, ...updates } : u);
       localStorage.setItem('nexus_simulated_users', JSON.stringify(users));
       return { success: true };
     }
   },
 
-  // --- ADMIN CRUD METHODS ---
   getAdminData: async () => {
     try {
       const { data: profiles } = await supabase.from('profiles').select('*').order('created_at', { ascending: false });
@@ -116,25 +125,19 @@ export const NexusAPI = {
   },
 
   adminDeleteProfile: async (userId: string) => {
-    try {
-      await supabase.from('profiles').delete().eq('id', userId);
-    } catch (e) {}
+    try { await supabase.from('profiles').delete().eq('id', userId); } catch (e) {}
     const users = getLocalUsers().filter(u => u.id !== userId);
     localStorage.setItem('nexus_simulated_users', JSON.stringify(users));
     return { success: true };
   },
 
   adminDeleteTransaction: async (txId: string) => {
-    try {
-      await supabase.from('transactions').delete().eq('id', txId);
-    } catch (e) {}
+    try { await supabase.from('transactions').delete().eq('id', txId); } catch (e) {}
     return { success: true };
   },
 
   adminUpsertProfile: async (user: User) => {
-    try {
-      await supabase.from('profiles').upsert([user]);
-    } catch (e) {}
+    try { await supabase.from('profiles').upsert([user]); } catch (e) {}
     const users = getLocalUsers().filter(u => u.id !== user.id);
     users.push(user);
     localStorage.setItem('nexus_simulated_users', JSON.stringify(users));
@@ -143,34 +146,19 @@ export const NexusAPI = {
 };
 
 export const SportsAPI = {
-  fetchLiveCricket: async (): Promise<Match[] | null> => {
-    if (!CRICKET_API_KEY) return null;
-
+  fetchLiveCricket: async (): Promise<{ matches: Match[], sources: any[] } | null> => {
+    // 1. Try Direct API (likely to fail in browser due to CORS if not proxied)
     try {
       const response = await fetch(`${CRICKET_API_URL}?apikey=${CRICKET_API_KEY}&offset=0`);
       const json = await response.json();
 
-      if (json.status !== 'success' || !json.data) {
-        console.warn("SportsAPI: API returned failure status or no data.", json);
-        return null;
-      }
-
-      return json.data.map((m: any) => {
-        const teamA = (m.teams && m.teams[0]) || 'TBA';
-        const teamB = (m.teams && m.teams[1]) || 'TBA';
-        
-        let statusDisplay = m.status || (m.ms === 'fixture' ? 'Scheduled' : 'Live');
-        
-        if (statusDisplay.length > 50) {
-          statusDisplay = statusDisplay.substring(0, 47) + '...';
-        }
-
-        return {
+      if (json.status === 'success' && json.data) {
+        const matches = json.data.map((m: any) => ({
           id: m.id || Math.random().toString(36).substr(2, 9),
           sport: 'Cricket',
-          teamA: teamA,
-          teamB: teamB,
-          startTime: statusDisplay,
+          teamA: (m.teams && m.teams[0]) || 'TBA',
+          teamB: (m.teams && m.teams[1]) || 'TBA',
+          startTime: (m.status || 'Live').substring(0, 47),
           isLive: m.ms === 'live',
           odds: { 
             over: Number((1.50 + Math.random() * 1.2).toFixed(2)), 
@@ -178,10 +166,52 @@ export const SportsAPI = {
             line: 1 
           },
           marketLocked: m.ms === 'result'
-        };
-      });
+        }));
+        return { matches, sources: [] };
+      }
     } catch (error) {
-      console.error("External Sports API Error:", error);
+      console.warn("SportsAPI: Direct fetch failed (CORS/Network). Invoking Gemini AI Fallback.");
+    }
+
+    // 2. AI Fallback (Gemini with Google Search bypasses local CORS issues)
+    try {
+      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
+      const prompt = `
+        Search for today's live or upcoming international cricket matches. 
+        Provide a list of at least 6 matches including:
+        - Team A and Team B names
+        - Current Status (e.g. LIVE 124/2 or Time in IST/GMT)
+        - Whether it is currently live (true/false)
+        Return the data as a JSON array with these keys: id, teamA, teamB, startTime, isLive.
+      `;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-3-flash-preview",
+        contents: prompt,
+        config: {
+          tools: [{ googleSearch: {} }],
+          responseMimeType: "application/json"
+        },
+      });
+
+      const text = response.text || "[]";
+      const cleanJson = text.replace(/```json|```/g, "").trim();
+      const parsed = JSON.parse(cleanJson);
+      const matches = parsed.map((m: any) => ({
+        ...m,
+        id: m.id || Math.random().toString(36).substr(2, 5),
+        sport: 'Cricket',
+        odds: { 
+          over: Number((1.4 + Math.random()).toFixed(2)), 
+          under: Number((1.4 + Math.random()).toFixed(2)), 
+          line: 1 
+        }
+      }));
+      
+      const sources = response.candidates?.[0]?.groundingMetadata?.groundingChunks || [];
+      return { matches, sources };
+    } catch (e) {
+      console.error("Critical Failure: Both Direct API and AI Fallback failed.", e);
       return null;
     }
   }

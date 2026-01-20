@@ -3,7 +3,6 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { User, Match, Language } from '../types';
 import { SPORTS } from '../constants';
 import { translations } from '../translations';
-import { GoogleGenAI } from "@google/genai";
 import { SportsAPI } from '../api.ts';
 
 interface PlacedBet {
@@ -57,59 +56,18 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
   const [placedBets, setPlacedBets] = useState<PlacedBet[]>([]);
   const [betStatus, setBetStatus] = useState<'IDLE' | 'PROCESSING' | 'SETTLED'>('IDLE');
   const [isSyncing, setIsSyncing] = useState(false);
-  const [dataSource, setDataSource] = useState<'MOCK' | 'AI' | 'REAL_TIME'>('MOCK');
+  const [groundingSources, setGroundingSources] = useState<any[]>([]);
 
   const syncRealTimeData = useCallback(async () => {
     setIsSyncing(true);
     try {
-      // 1. Try Real-Time External API first
-      const externalData = await SportsAPI.fetchLiveCricket();
-      if (externalData && externalData.length > 0) {
+      const result = await SportsAPI.fetchLiveCricket();
+      if (result) {
         setMatches(prev => {
           const nonCricket = prev.filter(m => m.sport !== 'Cricket');
-          return [...externalData, ...nonCricket];
+          return [...result.matches, ...nonCricket];
         });
-        setDataSource('REAL_TIME');
-        setIsSyncing(false);
-        return;
-      }
-
-      // 2. Fallback to Gemini AI if API Key is missing or failed
-      const ai = new GoogleGenAI({ apiKey: process.env.API_KEY || '' });
-      const prompt = `
-        List current live, recent (finished today), and upcoming international or major league cricket matches (IPL, BBL, PSL, etc.).
-        Include the following JSON structure for each match:
-        {
-          "id": "unique_string",
-          "sport": "Cricket",
-          "teamA": "Team Name",
-          "teamB": "Team Name",
-          "startTime": "Status or Start Time (e.g., 8:00 PM or LIVE 20.4 Ov)",
-          "isLive": boolean,
-          "odds": { "over": number_multiplier, "under": number_multiplier, "line": 1 }
-        }
-        Provide at least 6 matches. Return ONLY the raw JSON array.
-      `;
-
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json"
-        },
-      });
-
-      const text = response.text || "[]";
-      const cleanJson = text.replace(/```json|```/g, "").trim();
-      const newMatches: Match[] = JSON.parse(cleanJson);
-      
-      if (newMatches && Array.isArray(newMatches)) {
-        setMatches(prev => {
-          const nonCricket = prev.filter(m => m.sport !== 'Cricket');
-          return [...newMatches, ...nonCricket];
-        });
-        setDataSource('AI');
+        setGroundingSources(result.sources);
       }
     } catch (error) {
       console.error("Failed to sync live data:", error);
@@ -122,7 +80,7 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
     const interval = setInterval(() => {
       setMatches(prev => prev.map(m => {
         if (!m.isLive) return m;
-        const shouldLock = Math.random() > 0.99; // Slightly rarer locking
+        const shouldLock = Math.random() > 0.99;
         const change = (Math.random() - 0.5) * 0.08;
         return {
           ...m, 
@@ -209,15 +167,26 @@ const BettingView: React.FC<BettingViewProps> = ({ user, onBet, lang }) => {
           </div>
         </div>
 
-        {/* Sync Info */}
-        <div className="p-4 bg-slate-900/50 rounded-2xl border border-white/5 text-center">
-           <p className="text-[8px] text-slate-500 font-black uppercase mb-2">Node Connection Source</p>
-           <div className={`text-[10px] font-black px-3 py-1.5 rounded-lg border uppercase italic ${
-             dataSource === 'REAL_TIME' ? 'bg-green-600/10 border-green-500/30 text-green-400' : 
-             dataSource === 'AI' ? 'bg-blue-600/10 border-blue-500/30 text-blue-400' : 'bg-slate-800 border-white/5 text-slate-500'
-           }`}>
-             {dataSource === 'REAL_TIME' ? 'Direct API Link' : dataSource === 'AI' ? 'Gemini AI Sync' : 'Mock Data'}
-           </div>
+        {/* Sync Info & Sources */}
+        <div className="p-4 bg-slate-900/50 rounded-2xl border border-white/5">
+           <p className="text-[8px] text-slate-500 font-black uppercase mb-3 tracking-widest text-center">Node Data Integrity</p>
+           {groundingSources.length > 0 ? (
+             <div className="space-y-2">
+                <p className="text-[9px] text-green-500 font-black uppercase mb-1 flex items-center gap-2">
+                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse"></span>
+                  AI Grounding Active
+                </p>
+                {groundingSources.slice(0, 3).map((s, i) => (
+                  <a key={i} href={s.web.uri} target="_blank" rel="noreferrer" className="block text-[10px] text-blue-400 hover:underline truncate">
+                    {s.web.title || s.web.uri}
+                  </a>
+                ))}
+             </div>
+           ) : (
+             <div className="text-center">
+                <p className="text-[10px] text-slate-400 font-black uppercase italic">Direct API Link Active</p>
+             </div>
+           )}
         </div>
 
         <button 

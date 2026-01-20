@@ -113,14 +113,16 @@ const MatchCard: React.FC<{ match: Match; onBetNow: (m: Match, side: 'W1'|'W2') 
 
 const DashboardView: React.FC<DashboardViewProps> = ({ stats, lang, setView, user, onBet }) => {
   const [liveArenaMatches, setLiveArenaMatches] = useState<Match[]>([]);
+  const [groundingSources, setGroundingSources] = useState<any[]>([]);
   const [isLoadingLive, setIsLoadingLive] = useState(true);
 
   useEffect(() => {
     const fetchLive = async () => {
       try {
         const data = await SportsAPI.fetchLiveCricket();
-        if (data && data.length > 0) {
-          setLiveArenaMatches(data.filter(m => m.isLive || m.startTime.toLowerCase().includes('result')).slice(0, 10));
+        if (data && data.matches.length > 0) {
+          setLiveArenaMatches(data.matches.filter(m => m.isLive || m.startTime.toLowerCase().includes('result') || m.startTime.includes('/')).slice(0, 10));
+          setGroundingSources(data.sources);
         }
       } catch (e) {
         console.error("Live Arena Load Error", e);
@@ -129,7 +131,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, lang, setView, use
       }
     };
     fetchLive();
-    const interval = setInterval(fetchLive, 30000); // Auto-sync every 30s
+    const interval = setInterval(fetchLive, 60000); 
     return () => clearInterval(interval);
   }, []);
 
@@ -145,14 +147,14 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, lang, setView, use
         <div className="absolute inset-0 bg-gradient-to-r from-[#0b1223] via-[#0b1223]/70 to-transparent"></div>
         <div className="absolute inset-y-0 left-0 flex flex-col justify-center px-10 md:px-24 max-w-4xl">
           <div className="flex items-center space-x-3 mb-6">
-            <span className="px-3 py-1 bg-amber-600 text-white text-[10px] font-black rounded uppercase tracking-widest shadow-xl">CRICDATA NODE ACTIVE</span>
-            <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest italic animate-pulse">Sync Interval: 30s</span>
+            <span className="px-3 py-1 bg-amber-600 text-white text-[10px] font-black rounded uppercase tracking-widest shadow-xl">AI-DRIVEN ODDS NODE</span>
+            <span className="text-blue-400 text-[10px] font-black uppercase tracking-widest italic animate-pulse">Sync Protocol Active</span>
           </div>
           <h2 className="text-6xl md:text-9xl font-black text-white leading-[0.9] italic uppercase mb-8">
             ELITE <br /><span className="text-blue-500">SPORTS HUB</span>
           </h2>
           <p className="text-slate-300 text-base md:text-2xl mb-12 max-w-xl font-medium leading-relaxed italic opacity-90">
-            Premium sports betting integrated with live cricket nodes. Automated 5-tier MLM commissions with instant settlement.
+            Premium sports betting integrated with Gemini AI and real-time live nodes. Automated 5-tier MLM commissions with instant settlement.
           </p>
           <div className="flex gap-5">
             <button onClick={() => setView(AppView.BETTING)} className="px-14 py-6 bg-blue-600 hover:bg-blue-500 text-white rounded-[2.5rem] font-black italic shadow-2xl active:scale-95 transition-all text-xl border border-blue-400/30">OPEN SPORTSBOOK</button>
@@ -182,7 +184,7 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, lang, setView, use
               {[1, 2, 3].map(i => (
                 <div key={i} className="min-w-[340px] h-[320px] bg-slate-900/40 rounded-[2.5rem] border border-white/5 animate-pulse flex flex-col items-center justify-center">
                   <div className="w-16 h-16 bg-slate-800 rounded-full mb-4"></div>
-                  <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Scanning Network...</span>
+                  <span className="text-[11px] font-black text-slate-700 uppercase tracking-widest">Establishing Secure Link...</span>
                 </div>
               ))}
             </div>
@@ -196,6 +198,30 @@ const DashboardView: React.FC<DashboardViewProps> = ({ stats, lang, setView, use
             liveArenaMatches.map(match => <MatchCard key={match.id} match={match} onBetNow={handleQuickBet} />)
           )}
         </div>
+
+        {/* 🔗 Data Source Grounding (Compliant with AI Search Rules) */}
+        {groundingSources.length > 0 && (
+          <div className="mt-4 px-4 py-3 bg-blue-600/5 rounded-3xl border border-blue-500/10">
+            <p className="text-[9px] text-slate-500 font-black uppercase tracking-widest mb-2 flex items-center gap-2">
+              <i className="fa-solid fa-link text-blue-500"></i> Verified Data Sources
+            </p>
+            <div className="flex flex-wrap gap-x-6 gap-y-2">
+              {groundingSources.map((chunk, idx) => (
+                chunk.web && (
+                  <a 
+                    key={idx} 
+                    href={chunk.web.uri} 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="text-[10px] text-blue-400 hover:text-white transition-colors truncate max-w-[200px]"
+                  >
+                    {chunk.web.title || chunk.web.uri}
+                  </a>
+                )
+              ))}
+            </div>
+          </div>
+        )}
       </section>
 
       {/* 🎰 Casino Hot-list */}
